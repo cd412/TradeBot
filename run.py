@@ -3,8 +3,34 @@
 from binance_api import Binance
 from tcommas_api import API3Commas
 from pprint import pprint
+import argparse
+import sys
+import time
 import run_config
 
+
+#----------------------------------
+
+
+parser = argparse.ArgumentParser()
+
+
+parser.add_argument("--auto", help='Auto Stop/Start bots based on Margin Ratio', action='store_true', default=None)
+parser.add_argument("--stop_at", help='Stop bots when Margin Ratio >= value', type=float, default=2.5)
+parser.add_argument("--start_at", help='Start bots when Margin Ratio <= value', type=float, default=1.5)
+parser.add_argument("--show_positions", help='Show current open positions', action='store_true', default=None)
+parser.add_argument("--show_bots", help='Show bots details', action='store_true', default=None)
+parser.add_argument("--beep", help='Beep when issues detected', action='store_true', default=None)
+
+args = parser.parse_args()
+
+#----------------------------------
+
+beep_time = 30
+
+END   = '\033[0m'
+RED   = '\033[91m'
+GREEN = '\033[92m'
 
 
 #----------------------------------
@@ -22,6 +48,12 @@ def get3CommasAPI():
         API_SECRET=run_config.TCommas_API_SECRET
     )
     return api
+
+def beep(btime):
+    for i in range(btime):
+        sys.stdout.write('\r\a')
+        sys.stdout.flush()
+        time.sleep(0.5)
 
 def show_positions(positions):
     txt = f"SYM   Amt   entryPrice Margin     PNL       \n"
@@ -48,7 +80,7 @@ def stop_bots(bots):
                 print(f"Stopping {bot['name']}...")
                 xbot = api.disableBot(BOT_ID=bot['id'])
                 if xbot['is_enabled']:
-                    print("Error: Could not disable bot")
+                    print(f"{RED}Error: Could not disable bot{ENDC}")
                 else:
                     print("Bot is now disabled")
             else:
@@ -66,7 +98,7 @@ def start_bots(bots):
                 if xbot['is_enabled']:
                     print("Bot is now enabled")
                 else:
-                    print("Error: Could not enable bot")
+                    print(f"{RED}Error: Could not enable bot{ENDC}")
 
 
 
@@ -75,47 +107,41 @@ def start_bots(bots):
 #----------------------------------
 
 account=getBinanceAPI().futuresAccount()
-print(show_positions(account['positions']))
-print("--------------------")
+
+if args.show_positions:
+    print(show_positions(account['positions']))
+    print("--------------------")
 
 
 margin_ratio = get_margin_ratio(account)
-print(f"margin_ratio = {margin_ratio:0.2f}%")
+print(f"Margin Ratio = {margin_ratio:0.2f}%")
 print("--------------------")
 
 
-bots=get3CommasAPI().getBots()
+if args.auto or args.show_bots:
+    bots=get3CommasAPI().getBots()
 
-if margin_ratio >= 2.5:
-    print("Hight margin_ratio, stopping bots...")
-    stop_bots(bots)
+if args.auto:
+    if margin_ratio >= args.stop_at:
+        print(f"{RED}Hight margin_ratio, stopping bots...{ENDC}")
+        stop_bots(bots)
 
-if margin_ratio <= 1.5:
-    print("Low margin_ratio, starting bots...")
-    start_bots(bots)
+    if margin_ratio <= args.start_at:
+        #print(f"{GREEN}Low margin_ratio, starting bots...{ENDC}")
+        start_bots(bots)
 
 #account=get3CommasAPI().getAccounts()
 
-print(show_bots(bots))
-print("--------------------")
+if args.show_bots:
+    print(show_bots(bots))
+    print("--------------------")
+
+
+if args.beep and margin_ratio >= args.stop_at:
+    beep(beep_time)
 
 
 
-
-'''
-xbot = api.disableBot(BOT_ID='3403747')
-pprint(xbot)
-
-
-xbot = api.enableBot(BOT_ID='3403747')
-pprint(xbot)
-'''
-
-
-
-
-
-
-
+beep(1)
 
 
