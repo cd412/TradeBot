@@ -176,7 +176,7 @@ def get_max_bot_pairs(balance):
 
 def show_bots(bots):
     txt = f"{'Enabled':<7} {'Pair':<10} {'Strategy':<5} {'Bot Name':<25} {'AD':<3} {'Total':<6}\n"
-    for bot in sorted(bots, key=lambda k: (float(k['finished_deals_profit_usd']))):
+    for bot in sorted(bots, key=lambda k: (str(k['is_enabled']), ''.join(k['pairs']), k['strategy'])):
         if 'Futures' in bot['account_name']:
             txt += f"{str(bot['is_enabled']):<7} {''.join(bot['pairs']):<10} {bot['strategy']:<8} {bot['name']:<25} {bot['active_deals_count']:<3} ${float(bot['finished_deals_profit_usd']):<6.2f}\n"
     return txt[:-1]
@@ -284,7 +284,7 @@ def run_main():
             stop_all_bots(bots)
         else:
             if margin_ratio <= args.start_at:
-                print(f"{GREEN}Low margin_ratio, starting bots...{ENDC}")
+                print(f"{GREEN}Low Margin Ratio, starting bots...{ENDC}")
 
                 top_stopped_pairs = get_top_stopped_pairs(bots)
                 totalMarginBalance = get_totalMarginBalance(account)
