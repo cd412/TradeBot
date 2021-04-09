@@ -22,6 +22,15 @@ Notes:-
 
 
 ToDo:-
+- Add notification through email or Google Home?
+- Add script to create bots
+    - ask to select account
+    - ask for pair (to upper)
+    - confirm before creation
+    - create short and long
+
+
+
 - Consider multipliers when accounting for values
 - Handle multiple accounts
 
@@ -174,8 +183,14 @@ def get_margin_ratio(a_data):
 def get_totalMarginBalance(a_data):
     return float(a_data['totalMarginBalance'])
 
+
+def get_totalMaintMargin(a_data):
+    return float(a_data['totalMaintMargin'])
+
+
 def get_max_bot_pairs(balance):
     return balance/args.pair_allowance
+
 
 def show_bots(bots):
     total = 0.0
@@ -298,12 +313,13 @@ def run_main():
 
                 top_stopped_pairs = get_top_stopped_pairs(bots)
                 totalMarginBalance = get_totalMarginBalance(account)
+                totalMaintMargin = get_totalMaintMargin(account)
                 max_bot_pairs = get_max_bot_pairs(totalMarginBalance)
                 active_positions_count = get_active_positions_count(account['positions'])
                 total_bot_pair_count, active_bot_pair_count = get_bot_pair_count(bots)
                 bots_pairs_to_start = round(max_bot_pairs - active_positions_count)
 
-                print(f"totalMarginBalance = ${totalMarginBalance:<.2f}")
+                print(f"totalMarginBalance = ${totalMarginBalance:<.2f} (${totalMaintMargin:<.2f})")
                 print(f"Bots Active/Total: {active_bot_pair_count}/{total_bot_pair_count}")
                 print(f"Delta positions ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - running ({active_positions_count})")
                 #print(f"top_stopped_pairs = {top_stopped_pairs}")
@@ -338,7 +354,11 @@ def run_main():
 
 if args.keep_running:
     while True:
-        run_main()
+        try:
+            run_main()
+        except Exception as e:
+            print(e)
+            pass
         countdown(args.keep_running_timer)
 else:
     run_main()
