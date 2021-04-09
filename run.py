@@ -12,8 +12,7 @@ import run_config
 #----------------------------------
 '''
 
-e.g. time python3 run.py --show_bots --show_positions --beep --auto --pair_allowance 375 --keep_running
-
+e.g. time python3 run.py --show_all --beep --auto --pair_allowance 375 --keep_running --stop_at 2
 
 Notes:-
 
@@ -86,15 +85,17 @@ stop ALL bots
 parser = argparse.ArgumentParser()
 
 
+parser.add_argument("--dry", help='Dry run, do not start/stop bots', action='store_true', default=None)
 parser.add_argument("--auto", help='Auto Stop/Start bots based on Margin Ratio', action='store_true', default=None)
 parser.add_argument("--stop_at", help='Stop bots when Margin Ratio >= value', type=float, default=2.5)
 parser.add_argument("--start_at", help='Start bots when Margin Ratio <= value', type=float, default=1.5)
 parser.add_argument("--bot_start_bursts", help='Number of bots to start each time', type=int, default=3)
+parser.add_argument("--show_all", help='Show all info', action='store_true', default=None)
 parser.add_argument("--show_positions", help='Show current open positions', action='store_true', default=None)
 parser.add_argument("--show_bots", help='Show bots details', action='store_true', default=None)
 parser.add_argument("--pair_allowance", help='How much money each pair is allowed, default is $500.00 (agg is $250)', type=float, default=500.0)
 parser.add_argument("--beep", help='Beep when issues detected', action='store_true', default=None)
-
+#parser.add_argument("--pairs", help="A list of pairs ordered from best down, e.g. --pairs EOS ENJ AXS", nargs='+', default=None)
 parser.add_argument("--keep_running", help='Loop forever (Ctrl+c to stop)', action='store_true', default=None)
 parser.add_argument("--keep_running_timer", help='Time to sleep between runs in seconds (default 60)', action='store_true', default=60)
 parser.add_argument("--debug", help='debug', action='store_true', default=None)
@@ -175,10 +176,13 @@ def get_max_bot_pairs(balance):
     return balance/args.pair_allowance
 
 def show_bots(bots):
+    total = 0.0
     txt = f"{'Enabled':<7} {'Pair':<10} {'Strategy':<5} {'Bot Name':<25} {'AD':<3} {'Total':<6}\n"
     for bot in sorted(bots, key=lambda k: (str(k['is_enabled']), ''.join(k['pairs']), k['strategy'])):
         if 'Futures' in bot['account_name']:
+            total += float(bot['finished_deals_profit_usd'])
             txt += f"{str(bot['is_enabled']):<7} {''.join(bot['pairs']):<10} {bot['strategy']:<8} {bot['name']:<25} {bot['active_deals_count']:<3} ${float(bot['finished_deals_profit_usd']):<6.2f}\n"
+    txt += f"{'':57} ${total:<6.2f}\n"
     return txt[:-1]
 
 
@@ -198,11 +202,12 @@ def stop_all_bots(bots):
         if 'Futures' in bot['account_name']:
             if bot['is_enabled']:
                 print(f"Stopping {bot['name']}...")
-                xbot = get3CommasAPI().disableBot(BOT_ID=f"{bot['id']}")
-                if xbot['is_enabled']:
-                    print(f"{RED}Error: Could not disable bot{ENDC}")
-                else:
-                    print("Bot is now disabled")
+                if not args.dry:
+                    xbot = get3CommasAPI().disableBot(BOT_ID=f"{bot['id']}")
+                    if xbot['is_enabled']:
+                        print(f"{RED}Error: Could not disable bot{ENDC}")
+                    else:
+                        print("Bot is now disabled")
             else:
                 print("Bot is already disabled")
 
@@ -214,11 +219,12 @@ def start_all_bots(bots):
                 pass # nothing to do
             else:
                 print(f"Starting {bot['name']}...")
-                xbot = get3CommasAPI().enableBot(BOT_ID=f"{bot['id']}")
-                if xbot['is_enabled']:
-                    print("Bot is now enabled")
-                else:
-                    print(f"{RED}Error: Could not enable bot{ENDC}")
+                if not args.dry:
+                    xbot = get3CommasAPI().enableBot(BOT_ID=f"{bot['id']}")
+                    if xbot['is_enabled']:
+                        print("Bot is now enabled")
+                    else:
+                        print(f"{RED}Error: Could not enable bot{ENDC}")
 
 
 # Maybe can combine both functions with default None
@@ -230,18 +236,19 @@ def start_bot_pair(bots, pair_to_start):
             else:
                 print(f"Starting {bot['name']}...")
                 xbot = get3CommasAPI().enableBot(BOT_ID=f"{bot['id']}")
-                if xbot['is_enabled']:
-                    print("Bot is now enabled")
-                else:
-                    print(f"{RED}Error: Could not enable bot{ENDC}")
+                if not args.dry:
+                    if xbot['is_enabled']:
+                        print("Bot is now enabled")
+                    else:
+                        print(f"{RED}Error: Could not enable bot{ENDC}")
 
 
 def get_top_stopped_pairs(bots):
     l = []
     for bot in sorted(bots, key=lambda k: (float(k['finished_deals_profit_usd'])), reverse = True):
         if 'Futures' in bot['account_name'] and bot['strategy'] == "long" and not bot['is_enabled'] and 'do not start' not in bot['name']:
-            #print(''.join(bot['pairs']).replace('USDT_',''))
             l.append(''.join(bot['pairs']).replace('USDT_',''))
+    # interset with args.pairs and keep order from args.pairs...
     return l
 
 
@@ -254,17 +261,17 @@ def run_main():
 
     margin_ratio = get_margin_ratio(account)
 
-    if args.auto or args.show_bots:
+    if args.auto or args.show_bots or args.show_all:
         bots=get3CommasAPI().getBots()
 
 
     #account=get3CommasAPI().getAccounts()
 
-    if args.show_bots:
+    if args.show_bots or args.show_all:
         print(show_bots(bots))
         print("--------------------")
 
-    if args.show_positions:
+    if args.show_positions or args.show_all:
         print(show_positions(account['positions']))
         print("--------------------")
 
@@ -293,9 +300,9 @@ def run_main():
                 total_bot_pair_count, active_bot_pair_count = get_bot_pair_count(bots)
                 bots_pairs_to_start = round(max_bot_pairs - active_positions_count)
 
-                print(f"totalMarginBalance = {totalMarginBalance}")
+                print(f"totalMarginBalance = ${totalMarginBalance:<.2f}")
                 print(f"Bots Active/Total: {active_bot_pair_count}/{total_bot_pair_count}")
-                print(f"Delta positions = target - running : {bots_pairs_to_start} = {round(max_bot_pairs)} - {active_positions_count}")
+                print(f"Delta positions ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - running ({active_positions_count})")
                 #print(f"top_stopped_pairs = {top_stopped_pairs}")
                 if len(top_stopped_pairs) > 0:
                     if bots_pairs_to_start > 0: # need more positions
