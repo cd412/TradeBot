@@ -211,17 +211,18 @@ def get_max_bot_pairs(balance):
 
 def show_bots(bots):
     total = 0.0
-    txt = f"{'Enabled':<7} {'Pair':<6} {'Strategy':<5} {'Bot Name':<25} {'AD':<3} {'Total':<6}\n"
+    txt = f"  {'Pair':<6} {'AD':<3} {'Total':<7} {'L/S':<5} {'Bot Name':<25}\n"
     for bot in sorted(bots, key=lambda k: (str(k['is_enabled']), ''.join(k['pairs']), k['strategy'])):
         if args.binance_account_flag in bot['account_name']:
             notes = ""
-            if 'do not start' in bot['name']:
-                notes += " - DNS"
+            if 'do not start' in bot['name'].lower():
+                notes += "\u26D4"
             if ''.join(bot['pairs']).replace('USDT_','') not in bot['name']:
                 notes += " - Pair does not match bot name"
             total += float(bot['finished_deals_profit_usd'])
-            txt += f"{str(bot['is_enabled']):<7} {''.join(bot['pairs']).replace('USDT_',''):<6} {bot['strategy']:<8} {bot['name']:<25} {bot['active_deals_count']:<3} ${float(bot['finished_deals_profit_usd']):<6.2f}{notes}\n"
-    txt += f"{'':53} ${total:<6.2f}\n"
+            up_down_flag = '\u2B9D' if bot['is_enabled'] else '\u2B9F'
+            txt += f"{up_down_flag} {''.join(bot['pairs']).replace('USDT_',''):<6} {bot['active_deals_count']:<3} ${float(bot['finished_deals_profit_usd']):<6.2f} {bot['strategy']:<5} {bot['name']:<25} {notes}\n"
+    txt += f"  {'':10} ${total:<6.2f}\n"
     return txt[:-1]
 
 
@@ -240,7 +241,7 @@ def stop_all_bots(bots):
     for bot in sorted(bots, key=lambda k: (''.join(k['pairs']))):
         if args.binance_account_flag in bot['account_name']:
             if bot['is_enabled']:
-                print(f"Stopping {bot['name']}...")
+                print(f"Stopping {bot['name']}... ", end='')
                 if not args.dry:
                     xbot = get3CommasAPI().disableBot(BOT_ID=f"{bot['id']}")
                     if xbot['is_enabled']:
@@ -361,7 +362,7 @@ def run_main():
                     if len(top_stopped_pairs) > 0:
                         print (f"Need to start {bots_pairs_to_start} bot pairs...")
                         burst_start = args.bot_start_bursts if args.bot_start_bursts <= bots_pairs_to_start else bots_pairs_to_start
-                        print (f"Incrementally starting uo to {burst_start} this time...")
+                        print (f"Incrementally starting up to {burst_start} this time...")
                         burst_pairs_to_start = top_stopped_pairs[:burst_start] # Assume list is sorted
                         for bot_to_start in burst_pairs_to_start:
                             print(f"Starting {bot_to_start} bot pairs...")
