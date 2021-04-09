@@ -18,7 +18,9 @@ Notes:-
 
 - Make sure 'Futures' is in the name of the account
 - Add 'do not start' to the name of the bots you do not want to start automatically
-
+- To set up SMS notification when Margin Ratio is critical add to config file
+    ifttt_url = 'https://maker.ifttt.com/trigger/Event_Name/with/key/xyz'
+    and set up IFTTT webhook to SMS link
 
 
 ToDo:-
@@ -126,6 +128,14 @@ RED    = '\033[91m'
 GREEN  = '\033[92m'
 YELLOW = '\033[93m'
 
+
+#----------------------------------
+
+do_ifttt = True
+try:
+    _ = run_config.ifttt_url
+except NameError:
+    do_ifttt = False
 
 #----------------------------------
 
@@ -302,11 +312,14 @@ def run_main():
     print("--------------------")
 
 
-
     if args.auto:
         if margin_ratio >= args.stop_at:
             print(f"{RED}Hight margin_ratio, stopping bots...{ENDC}")
             stop_all_bots(bots)
+            if do_ifttt:
+                import urllib.request
+                ifttt_contents = urllib.request.urlopen(run_config.ifttt_url).read()
+                print(ifttt_contents)
         else:
             if margin_ratio <= args.start_at:
                 #print(f"{GREEN}Low Margin Ratio, starting bots...{ENDC}")
