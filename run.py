@@ -11,8 +11,16 @@ import run_config
 
 #----------------------------------
 '''
+Usage:-
 
-e.g. time python3 run.py --show_all --beep --auto --pair_allowance 375 --keep_running --stop_at 2 --bot_start_bursts 1
+Run main program:
+time python3 run.py --show_all --beep --auto --keep_running --stop_at 2 --bot_start_bursts 3 --pair_allowance 375
+
+On a seperate machine, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
+time python3 run.py --auto --pair_allowance 250 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe
+
+
+
 
 Notes:-
 
@@ -114,7 +122,8 @@ parser.add_argument("--pair_allowance", help='How much money each pair is allowe
 parser.add_argument("--beep", help='Beep when issues detected', action='store_true', default=None)
 #parser.add_argument("--pairs", help="A list of pairs ordered from best down, e.g. --pairs EOS ENJ AXS", nargs='+', default=None)
 parser.add_argument("--keep_running", help='Loop forever (Ctrl+c to stop)', action='store_true', default=None)
-parser.add_argument("--keep_running_timer", help='Time to sleep between runs in seconds (default 60)', action='store_true', default=60)
+parser.add_argument("--keep_running_timer", help='Time to sleep between runs in seconds (default 60)', type=int, default=60)
+parser.add_argument("--safe", help='Run in safe mode (as a backup) with different values to make sure to stop (and not start) bots', action='store_true', default=None)
 parser.add_argument("--debug", help='debug', action='store_true', default=None)
 
 args = parser.parse_args()
@@ -211,8 +220,9 @@ def get_max_bot_pairs(balance):
 
 def show_bots(bots):
     total = 0.0
-    txt = f"  {'Pair':<6} {'AD':<3} {'Total':<7} {'L/S':<5} {'Bot Name':<25}\n"
-    for bot in sorted(bots, key=lambda k: (str(k['is_enabled']), ''.join(k['pairs']), k['strategy'])):
+    txt = f"\u2B9E {'Pair':<6} {'M':2} {'AD':<3} {'Total':<7} {'L/S':<5} {'Bot Name':<25}\n"
+    #for bot in sorted(bots, key=lambda k: (str(k['is_enabled']), ''.join(k['pairs']), k['strategy'])):
+    for bot in sorted(bots, key=lambda k: (''.join(k['pairs']), k['strategy'])):
         if args.binance_account_flag in bot['account_name']:
             notes = ""
             if 'do not start' in bot['name'].lower():
@@ -221,7 +231,8 @@ def show_bots(bots):
                 notes += " - Pair does not match bot name"
             total += float(bot['finished_deals_profit_usd'])
             up_down_flag = '\u2B9D' if bot['is_enabled'] else '\u2B9F'
-            txt += f"{up_down_flag} {''.join(bot['pairs']).replace('USDT_',''):<6} {bot['active_deals_count']:<3} ${float(bot['finished_deals_profit_usd']):<6.2f} {bot['strategy']:<5} {bot['name']:<25} {notes}\n"
+            multiplier = int((float(bot['base_order_volume'])//10))
+            txt += f"{up_down_flag} {''.join(bot['pairs']).replace('USDT_',''):<6} {multiplier}X {bot['active_deals_count']:<3} ${float(bot['finished_deals_profit_usd']):<6.2f} {bot['strategy']:<5} {bot['name']:<25} {notes}\n"
     txt += f"  {'':10} ${total:<6.2f}\n"
     return txt[:-1]
 
@@ -284,12 +295,13 @@ def start_bot_pair(bots, pair_to_start):
                         print(f"{RED}Error: Could not enable bot{ENDC}")
 
 
+# Get sorted list of stopped pairs by profit accounting for multiplier...
 def get_top_stopped_pairs(bots):
     l = []
-    for bot in sorted(bots, key=lambda k: (float(k['finished_deals_profit_usd'])), reverse = True):
+    for bot in sorted(bots, key=lambda k: (float(k['finished_deals_profit_usd'])/float(k['base_order_volume'])), reverse = True):
         if args.binance_account_flag in bot['account_name'] and bot['strategy'] == "long" and not bot['is_enabled'] and 'do not start' not in bot['name']:
             l.append(''.join(bot['pairs']).replace('USDT_',''))
-    # interset with args.pairs and keep order from args.pairs...
+    # intersect with args.pairs and keep order from args.pairs...
     return l
 
 
@@ -358,7 +370,7 @@ def run_main():
                 print(f"Delta positions ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - running ({active_positions_count})")
                 #print(f"top_stopped_pairs = {top_stopped_pairs}")
 
-                if bots_pairs_to_start > 0: # need more positions
+                if bots_pairs_to_start > 0 and not args.safe: # need more positions
                     if len(top_stopped_pairs) > 0:
                         print (f"Need to start {bots_pairs_to_start} bot pairs...")
                         burst_start = args.bot_start_bursts if args.bot_start_bursts <= bots_pairs_to_start else bots_pairs_to_start
