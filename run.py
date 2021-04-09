@@ -16,27 +16,27 @@ e.g. time python3 run.py --show_all --beep --auto --pair_allowance 375 --keep_ru
 
 Notes:-
 
-- Make sure 'Futures' is in the name of the account
+- Make sure 'Futures' is in the name of the account or use --binance_account_flag to specify part of name
+
 - Add 'do not start' to the name of the bots you do not want to start automatically
+
 - To set up SMS notification when Margin Ratio is critical add to config file
     ifttt_url = 'https://maker.ifttt.com/trigger/Event_Name/with/key/xyz'
     and set up IFTTT webhook to SMS link
 
 
+
 ToDo:-
-- Add notification through email or Google Home?
-- Add script to create bots
+- Add notification through email or Google Home? (IFTTT is done for MR >= critical)
+- Add script to create bots from existing one (not simple!!!)
     - ask to select account
     - ask for pair (to upper)
     - confirm before creation
     - create short and long
 
-
-
 - Consider multipliers when accounting for values
-- Handle multiple accounts
+- Allow hardcoded Generate list of pairs sorted by how good they have been (or user input pairs)
 
-- Generate list of pairs sorted by how good they have been (or user input pairs)
 - Manually create a lot of bots for all pairs possible (do not start them)
 - Calculate how many bot pairs you can have running (max bot pairs)
     - balance/?
@@ -134,7 +134,7 @@ YELLOW = '\033[93m'
 do_ifttt = True
 try:
     _ = run_config.ifttt_url
-except NameError:
+except Exception:
     do_ifttt = False
 
 #----------------------------------
@@ -217,7 +217,7 @@ def show_bots(bots):
                 notes += " - Pair does not match bot name"
             total += float(bot['finished_deals_profit_usd'])
             txt += f"{str(bot['is_enabled']):<7} {''.join(bot['pairs']).replace('USDT_',''):<6} {bot['strategy']:<8} {bot['name']:<25} {bot['active_deals_count']:<3} ${float(bot['finished_deals_profit_usd']):<6.2f}{notes}\n"
-    #txt += f"{'':53} ${total:<6.2f}\n"
+    txt += f"{'':53} ${total:<6.2f}\n"
     return txt[:-1]
 
 

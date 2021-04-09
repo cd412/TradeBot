@@ -13,7 +13,7 @@ class API3Commas():
 
     methods = {
             'getAccounts': {'url': '/public/api/ver1/accounts', 'method': 'GET'},
-            'getBots': {'url': '/public/api/ver1/bots', 'method': 'GET'},
+            'getBots': {'url': '/public/api/ver1/bots?limit=100', 'method': 'GET'},
             'disableBot': {'url': '/public/api/ver1/bots/BOT_ID/disable', 'method': 'POST'},
             'enableBot': {'url': '/public/api/ver1/bots/BOT_ID/enable', 'method': 'POST'},
     }
@@ -36,13 +36,24 @@ class API3Commas():
         command = kwargs.pop('command')
         url = self.methods[command]['url']
         for k, v in kwargs.items():
-            print(f"{k} {v}")
+            #print(f"{k} {v}")
             url = url.replace(k, v)
         headers = {}
         api_url = 'https://api.3commas.io' + url
         sign = hmac.new(key = self.API_SECRET, msg = str.encode(url), digestmod = hashlib.sha256).hexdigest()
         headers = {'APIKEY': self.API_KEY,
                    'Signature': str(sign)}
+        '''
+        print("----------------------------------")
+        print(f"command = {command}")
+        print(f"sign = {sign}")
+        print(f"self.API_SECRET = {self.API_SECRET}")
+        print(f"url = {url}")
+        print(f"api_url = {api_url}")
+        print(f"headers = {headers}")
+        print(f"self.methods[command]['method'] = {self.methods[command]['method']}")
+        print("----------------------------------")
+        '''
         response = requests.request(
             method=self.methods[command]['method'], 
             url=api_url, 
