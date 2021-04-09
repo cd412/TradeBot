@@ -171,17 +171,20 @@ def beep(btime):
 
 
 def show_positions(positions):
-    txt = f"SYM   Amt   entryPrice Margin     PNL       \n"
+    txt = f"Sym   Amt   entryPrice Margin     PNL       \n"
     for position in sorted(positions, key=lambda k: (k['symbol'])):
         if float(position['positionAmt']) != 0.0:
             txt += f"{position['symbol'].replace('USDT',''):5} {position['positionAmt']:5} {position['entryPrice']:10} {position['positionInitialMargin']:10} {position['unrealizedProfit']}\n"
     return txt[:-1]
 
 
-def get_active_positions_count(positions):
+def get_active_positions_count(positions, bots):
     count = 0
     for position in positions:
         if float(position['positionAmt']) != 0.0:
+            for bot in bots:
+                if position['symbol'].replace('USDT','') == ''.join(bot['pairs']).replace('USDT_','') and bot['strategy'] == 'long':
+                    count += int((float(bot['base_order_volume'])//10) - 1)
             count += 1
     return count
 
@@ -204,12 +207,17 @@ def get_max_bot_pairs(balance):
 
 def show_bots(bots):
     total = 0.0
-    txt = f"{'Enabled':<7} {'Pair':<10} {'Strategy':<5} {'Bot Name':<25} {'AD':<3} {'Total':<6}\n"
+    txt = f"{'Enabled':<7} {'Pair':<6} {'Strategy':<5} {'Bot Name':<25} {'AD':<3} {'Total':<6}\n"
     for bot in sorted(bots, key=lambda k: (str(k['is_enabled']), ''.join(k['pairs']), k['strategy'])):
         if args.binance_account_flag in bot['account_name']:
+            notes = ""
+            if 'do not start' in bot['name']:
+                notes += " - DNS"
+            if ''.join(bot['pairs']).replace('USDT_','') not in bot['name']:
+                notes += " - Pair does not match bot name"
             total += float(bot['finished_deals_profit_usd'])
-            txt += f"{str(bot['is_enabled']):<7} {''.join(bot['pairs']):<10} {bot['strategy']:<8} {bot['name']:<25} {bot['active_deals_count']:<3} ${float(bot['finished_deals_profit_usd']):<6.2f}\n"
-    txt += f"{'':57} ${total:<6.2f}\n"
+            txt += f"{str(bot['is_enabled']):<7} {''.join(bot['pairs']).replace('USDT_',''):<6} {bot['strategy']:<8} {bot['name']:<25} {bot['active_deals_count']:<3} ${float(bot['finished_deals_profit_usd']):<6.2f}{notes}\n"
+    #txt += f"{'':53} ${total:<6.2f}\n"
     return txt[:-1]
 
 
@@ -328,7 +336,7 @@ def run_main():
                 totalMarginBalance = get_totalMarginBalance(account)
                 totalMaintMargin = get_totalMaintMargin(account)
                 max_bot_pairs = get_max_bot_pairs(totalMarginBalance)
-                active_positions_count = get_active_positions_count(account['positions'])
+                active_positions_count = get_active_positions_count(account['positions'], bots)
                 total_bot_pair_count, active_bot_pair_count = get_bot_pair_count(bots)
                 bots_pairs_to_start = round(max_bot_pairs - active_positions_count)
 
@@ -341,7 +349,7 @@ def run_main():
                     if len(top_stopped_pairs) > 0:
                         print (f"Need to start {bots_pairs_to_start} bot pairs...")
                         burst_start = args.bot_start_bursts if args.bot_start_bursts <= bots_pairs_to_start else bots_pairs_to_start
-                        print (f"Incrementally starting {burst_start} this time...")
+                        print (f"Incrementally starting uo to {burst_start} this time...")
                         burst_pairs_to_start = top_stopped_pairs[:burst_start] # Assume list is sorted
                         for bot_to_start in burst_pairs_to_start:
                             print(f"Starting {bot_to_start} bot pairs...")
