@@ -13,7 +13,7 @@ class API3Commas():
 
     methods = {
             'getAccounts': {'url': '/public/api/ver1/accounts', 'method': 'GET'},
-            'getBots': {'url': '/public/api/ver1/bots?limit=100', 'method': 'GET'},
+            'getBots': {'url': '/public/api/ver1/botsOPTIONS', 'method': 'GET'},
             'disableBot': {'url': '/public/api/ver1/bots/BOT_ID/disable', 'method': 'POST'},
             'enableBot': {'url': '/public/api/ver1/bots/BOT_ID/enable', 'method': 'POST'},
     }
@@ -38,6 +38,7 @@ class API3Commas():
         for k, v in kwargs.items():
             #print(f"{k} {v}")
             url = url.replace(k, v)
+        url = url.replace("OPTIONS", "") # When no OPTIONS are passed
         headers = {}
         api_url = 'https://api.3commas.io' + url
         sign = hmac.new(key = self.API_SECRET, msg = str.encode(url), digestmod = hashlib.sha256).hexdigest()

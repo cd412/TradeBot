@@ -12,7 +12,7 @@ import run_config
 #----------------------------------
 '''
 
-e.g. time python3 run.py --show_all --beep --auto --pair_allowance 375 --keep_running --stop_at 2
+e.g. time python3 run.py --show_all --beep --auto --pair_allowance 375 --keep_running --stop_at 2 --bot_start_bursts 1
 
 Notes:-
 
@@ -27,6 +27,10 @@ Notes:-
 
 
 ToDo:-
+- Get more pages of bots if they exist
+    - https://github.com/3commas-io/3commas-official-api-docs/blob/master/bots_api.md#user-bots-permission-bots_read-security-signed
+        - offset
+
 - Add notification through email or Google Home? (IFTTT is done for MR >= critical)
 - Add script to create bots from existing one (not simple!!!)
     - ask to select account
@@ -254,7 +258,7 @@ def start_all_bots(bots):
             if bot['is_enabled'] or 'do not start' in bot['name']:
                 pass # nothing to do
             else:
-                print(f"Starting {bot['name']}...")
+                print(f"Starting {bot['name']}... ", end='')
                 if not args.dry:
                     xbot = get3CommasAPI().enableBot(BOT_ID=f"{bot['id']}")
                     if xbot['is_enabled']:
@@ -270,7 +274,7 @@ def start_bot_pair(bots, pair_to_start):
             if bot['is_enabled'] or 'do not start' in bot['name'] or not ''.join(bot['pairs']).endswith(pair_to_start):
                 pass # nothing to do
             else:
-                print(f"Starting {bot['name']}...")
+                print(f"Starting {bot['name']}... ", end='')
                 if not args.dry:
                     xbot = get3CommasAPI().enableBot(BOT_ID=f"{bot['id']}")
                     if xbot['is_enabled']:
@@ -298,8 +302,16 @@ def run_main():
     margin_ratio = get_margin_ratio(account)
 
     if args.auto or args.show_bots or args.show_all:
-        bots=get3CommasAPI().getBots()
-
+        chunks = 100
+        count = 0
+        bots = []
+        while True:
+            tbots=get3CommasAPI().getBots(OPTIONS=f"?limit={chunks}&offset={chunks*count}")
+            count += 1
+            if len(tbots) > 0:
+                bots.extend(tbots)
+            else:
+                break
 
     #account=get3CommasAPI().getAccounts()
 
