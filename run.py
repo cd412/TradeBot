@@ -16,10 +16,10 @@ import signal
 Usage:-
 
 - Run main program:
-time python3 run.py --show_all --beep --auto --keep_running --stop_at 2 --bot_start_bursts 1 --pair_allowance 375
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 1 --pair_allowance 375
 
 - On a seperate machine, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
-time python3 run.py --auto --pair_allowance 250 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe
+time python3 run.py --colors --auto --pair_allowance 250 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe
 
 
 
@@ -81,7 +81,10 @@ parser.add_argument("--show_positions", help='Show current open positions', acti
 parser.add_argument("--show_bots", help='Show bots details', action='store_true', default=None)
 parser.add_argument("--show_deals", help='Show deals details', action='store_true', default=None)
 parser.add_argument("--pair_allowance", help='How much money each pair is allowed, default is $500.00 (agg is $250)', type=float, default=500.0)
+
 parser.add_argument("--beep", help='Beep when issues detected', action='store_true', default=None)
+parser.add_argument("--colors", help='Add colors if system supports it', action='store_true', default=None)
+
 #parser.add_argument("--pairs", help="A list of pairs ordered from best down, e.g. --pairs EOS ENJ AXS", nargs='+', default=None)
 parser.add_argument("--keep_running", help='Loop forever (Ctrl+c to stop)', action='store_true', default=None)
 parser.add_argument("--keep_running_timer", help='Time to sleep between runs in seconds (default 60)', type=int, default=60)
@@ -97,11 +100,16 @@ if args.start_at >= args.stop_at:
 #----------------------------------
 
 beep_time = 30
-
-ENDC    = '\033[0m'
-RED    = '\033[91m'
-GREEN  = '\033[92m'
-YELLOW = '\033[93m'
+if args.colors:
+    ENDC   = '\033[0m'
+    RED    = '\033[91m'
+    GREEN  = '\033[92m'
+    YELLOW = '\033[93m'
+else:
+    ENDC   = ''
+    RED    = ''
+    GREEN  = ''
+    YELLOW = ''
 
 
 #----------------------------------
