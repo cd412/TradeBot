@@ -421,7 +421,7 @@ def show_deals(deals):
     txt = ""
 
     active_deals = sorted(deals, key=lambda k: (float(k['bought_volume'])))#, reverse = True)
-    txt = f"{'Pair':6} : {'SOs':9} : ${'Bought':8} : ${'Reserve':7} : {'%Profit':7}\n"
+    txt = f"{'Pair':6} : {'SOs':9} : ${'Bought':8} : ${'Reserve':7} : {'%Profit':7} : Age(DHM)\n"
 
     for ad in active_deals:
         error_message = f"{RED}{xstr(ad['error_message'])}{xstr(ad['failed_message'])}{ENDC}"
@@ -437,8 +437,17 @@ def show_deals(deals):
         created_at_ts = datetime.strptime(ad['created_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
         created_at_ts_diff = ts - created_at_ts
         reserved_cost, max_reserved_cost = get_deal_cost_reserved(ad)
+        
+        age_d = created_at_ts_diff.days
+        age_d_str = str(age_d).rjust(2, '0')+' ' if age_d > 0 else '   '
+        #age_d_str = f"{str(created_at_ts_diff.days)+'d' if created_at_ts_diff.days > 0 else ''}"
+        age_h = int((created_at_ts_diff.total_seconds()/3600)%24)
+        age_h_str = str(age_h).rjust(2, '0')+':' if age_h > 0 else '   '
+        age_m = int(((created_at_ts_diff.total_seconds()/3600) - int(created_at_ts_diff.total_seconds()/3600))*60)
+        age_m_str = str(age_m).rjust(2, '0')# if age_m > 0 else '  '
+        age = f"{age_d_str:3}{age_h_str:3}{age_m_str:2}"
 
-        txt += f"{ad['pair'].replace('USDT_',''):6} : c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} : ${float(ad['bought_volume']):8.2f} : ${reserved_cost:7.2f} : {ad['actual_profit_percentage']:6}% : ({created_at_ts_diff.days}d {int((created_at_ts_diff.total_seconds()/3600)%24)}h {int(((created_at_ts_diff.total_seconds()/3600) - int(created_at_ts_diff.total_seconds()/3600))*60)}m) {a_flag}{error_message}\n"
+        txt += f"{ad['pair'].replace('USDT_',''):6} : c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} : ${float(ad['bought_volume']):8.2f} : ${reserved_cost:7.2f} : {ad['actual_profit_percentage']:6}% : {age} {a_flag}{error_message}\n"
 
         total_bought_volume += float(ad['bought_volume'])
         total_deals_cost_reserved += reserved_cost
