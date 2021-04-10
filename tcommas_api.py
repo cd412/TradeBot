@@ -60,6 +60,7 @@ class API3Commas():
             url=api_url, 
             headers=headers)
         if 'code' in response.text:
-            print(response.text)
+            #print(response.text)
+            pass
         return response.json()
 

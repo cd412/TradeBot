@@ -7,18 +7,19 @@ import argparse
 import sys
 import time
 import run_config
-
+from datetime import datetime
+from time import gmtime, strftime
+import signal
 
 #----------------------------------
 '''
 Usage:-
 
-Run main program:
-time python3 run.py --show_all --beep --auto --keep_running --stop_at 2 --bot_start_bursts 3 --pair_allowance 375
+- Run main program:
+time python3 run.py --show_all --beep --auto --keep_running --stop_at 2 --bot_start_bursts 1 --pair_allowance 375
 
-On a seperate machine, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
+- On a seperate machine, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
 time python3 run.py --auto --pair_allowance 250 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe
-
 
 
 
@@ -35,71 +36,30 @@ Notes:-
 
 
 ToDo:-
-- Get more pages of bots if they exist
-    - https://github.com/3commas-io/3commas-official-api-docs/blob/master/bots_api.md#user-bots-permission-bots_read-security-signed
-        - offset
 
 - Add notification through email or Google Home? (IFTTT is done for MR >= critical)
+
 - Add script to create bots from existing one (not simple!!!)
     - ask to select account
     - ask for pair (to upper)
     - confirm before creation
     - create short and long
 
-- Consider multipliers when accounting for values
 - Allow hardcoded Generate list of pairs sorted by how good they have been (or user input pairs)
 
-- Manually create a lot of bots for all pairs possible (do not start them)
-- Calculate how many bot pairs you can have running (max bot pairs)
-    - balance/?
-- count active positions
-- if active positions is under max bot pairs, start more bots
-
-- start all bots at that stage?
-- if we need to stop, should we only stop ones from bottom of pairs list and how many to stop?
-
-- always check Margin Ratio before starting bots
-- add flag to bot so it is not started automatically, e.g. bot name including 'do not start'
 
 
-top best -> worst
-pair1, pair2, ...., pairN (e.g. 30)
+XYZ:-
 
+- if bots_pairs_to_start > 0
+    - if stopped bots with positions > 0
+        - start them all
+    - else
+        - start count min(burst, bots_pairs_to_start * args.bots_per_position_ratio)
+        - start sorted stopped bots without positions
 
-example/use case:-
-
-***check every 1 minutes***
-
-$5000/375 = 15 pairs potential target
-m = 2.7
-STOP all
-
-
-15 pairs target positions
-m 0.8
-positions = 3
-12 bellow target
-START (top 10% rounded up - JM think of math) that are stopped
-
-
-15 pairs target positions
-m 1.1
-positions = 18
-3 above target
-stop ALL bots
-
-
-
-- margin >= stop limit
-    - stop all bots
-    - exit
-- margin <= start limit
-    - if not enough positions opened
-        - do nothing OR stop bots
-        - start targeted bots incrementally
-    - else if more position opened than target
-        - stop all bots
-
+stopped bots with positions
+sorted stopped bots without positions
 
 '''
 #----------------------------------
@@ -113,6 +73,7 @@ parser.add_argument("--auto", help='Auto Stop/Start bots based on Margin Ratio',
 parser.add_argument("--stop_at", help='Stop bots when Margin Ratio >= value', type=float, default=2.5)
 parser.add_argument("--start_at", help='Start bots when Margin Ratio <= value', type=float, default=1.5)
 parser.add_argument("--bot_start_bursts", help='Number of bots to start each time', type=int, default=3)
+parser.add_argument("--bots_per_position_ratio", help='Open a max number of bots ratio for each needed position', type=int, default=3)
 parser.add_argument("--binance_account_flag", help='Part of binance account name identifier', default="Futures")
 
 parser.add_argument("--show_all", help='Show all info', action='store_true', default=None)
@@ -168,6 +129,11 @@ def get3CommasAPI():
     return api
 
 
+def signal_handler(sig, frame):
+    print('\nYou pressed Ctrl+C!')
+    sys.exit(0)
+
+
 def countdown(t):
     while t:
         mins, secs = divmod(t, 60)
@@ -175,6 +141,7 @@ def countdown(t):
         print(timer, end="\r")
         time.sleep(1)
         t -= 1
+
 
 def beep(btime):
     for i in range(btime):
@@ -218,12 +185,13 @@ def get_max_bot_pairs(balance):
     return balance/args.pair_allowance
 
 
-def show_bots(bots):
+def show_bots(bots, account_id):
     total = 0.0
     txt = f"\u2B9E {'Pair':<6} {'M':2} {'AD':<3} {'Total':<7} {'L/S':<5} {'Bot Name':<25}\n"
     #for bot in sorted(bots, key=lambda k: (str(k['is_enabled']), ''.join(k['pairs']), k['strategy'])):
     for bot in sorted(bots, key=lambda k: (''.join(k['pairs']), k['strategy'])):
-        if args.binance_account_flag in bot['account_name']:
+        #if args.binance_account_flag in bot['account_name']:
+        if account_id == bot['account_id']:
             notes = ""
             if 'do not start' in bot['name'].lower():
                 notes += "\u26D4"
@@ -233,24 +201,26 @@ def show_bots(bots):
             up_down_flag = '\u2B9D' if bot['is_enabled'] else '\u2B9F'
             multiplier = int((float(bot['base_order_volume'])//10))
             txt += f"{up_down_flag} {''.join(bot['pairs']).replace('USDT_',''):<6} {multiplier}X {bot['active_deals_count']:<3} ${float(bot['finished_deals_profit_usd']):<6.2f} {bot['strategy']:<5} {bot['name']:<25} {notes}\n"
-    txt += f"  {'':10} ${total:<6.2f}\n"
+    txt += f"\u2B9C {'':13} ${total:<6.2f}\n"
     return txt[:-1]
 
 
-def get_bot_pair_count(bots):
+def get_bot_pair_count(bots, account_id):
     a_count = 0
     count = 0
     for bot in bots:
-        if args.binance_account_flag in bot['account_name'] and bot['strategy'] == 'long':
+        #if args.binance_account_flag in bot['account_name'] and bot['strategy'] == 'long':
+        if account_id == bot['account_id'] and bot['strategy'] == 'long':
             count += 1
             if bot['is_enabled']:
                 a_count += 1
     return count, a_count
 
 
-def stop_all_bots(bots):
+def stop_all_bots(bots, account_id):
     for bot in sorted(bots, key=lambda k: (''.join(k['pairs']))):
-        if args.binance_account_flag in bot['account_name']:
+        #if args.binance_account_flag in bot['account_name']:
+        if account_id == bot['account_id']:
             if bot['is_enabled']:
                 print(f"Stopping {bot['name']}... ", end='')
                 if not args.dry:
@@ -259,14 +229,17 @@ def stop_all_bots(bots):
                         print(f"{RED}Error: Could not disable bot{ENDC}")
                     else:
                         print("Bot is now disabled")
+                else:
+                    print("")
             else:
                 #print("Bot is already disabled")
                 pass
 
 
-def start_all_bots(bots):
+def start_all_bots(bots, account_id):
     for bot in sorted(bots, key=lambda k: (''.join(k['pairs']))):
-        if args.binance_account_flag in bot['account_name']:
+        #if args.binance_account_flag in bot['account_name']:
+        if account_id == bot['account_id']:
             if bot['is_enabled'] or 'do not start' in bot['name']:
                 pass # nothing to do
             else:
@@ -277,12 +250,15 @@ def start_all_bots(bots):
                         print("Bot is now enabled")
                     else:
                         print(f"{RED}Error: Could not enable bot{ENDC}")
+                else:
+                    print("")
 
 
 # Maybe can combine both functions with default None
-def start_bot_pair(bots, pair_to_start):
+def start_bot_pair(bots, account_id, pair_to_start):
     for bot in sorted(bots, key=lambda k: (''.join(k['pairs']))):
-        if args.binance_account_flag in bot['account_name']:
+        #if args.binance_account_flag in bot['account_name']:
+        if account_id == bot['account_id']:
             if bot['is_enabled'] or 'do not start' in bot['name'] or not ''.join(bot['pairs']).endswith(pair_to_start):
                 pass # nothing to do
             else:
@@ -293,23 +269,128 @@ def start_bot_pair(bots, pair_to_start):
                         print("Bot is now enabled")
                     else:
                         print(f"{RED}Error: Could not enable bot{ENDC}")
+                else:
+                    print("")
+
+
+def stop_bot_pair(bots, account_id, pair_to_stop):
+    for bot in sorted(bots, key=lambda k: (''.join(k['pairs']))):
+        #if args.binance_account_flag in bot['account_name']:
+        if account_id == bot['account_id']:
+            if bot['is_enabled'] and ''.join(bot['pairs']).endswith(pair_to_stop):
+                print(f"Stopping {bot['name']}... ", end='')
+                if not args.dry:
+                    xbot = get3CommasAPI().disableBot(BOT_ID=f"{bot['id']}")
+                    if xbot['is_enabled']:
+                        print(f"{RED}Error: Could not disable bot{ENDC}")
+                    else:
+                        print("Bot is now disabled")
+                else:
+                    print("")
 
 
 # Get sorted list of stopped pairs by profit accounting for multiplier...
-def get_top_stopped_pairs(bots):
+def get_top_stopped_pairs(bots, account_id):
     l = []
     for bot in sorted(bots, key=lambda k: (float(k['finished_deals_profit_usd'])/float(k['base_order_volume'])), reverse = True):
-        if args.binance_account_flag in bot['account_name'] and bot['strategy'] == "long" and not bot['is_enabled'] and 'do not start' not in bot['name']:
+        #if args.binance_account_flag in bot['account_name'] and bot['strategy'] == "long" and not bot['is_enabled'] and 'do not start' not in bot['name']:
+        if account_id == bot['account_id'] and bot['strategy'] == "long" and not bot['is_enabled'] and 'do not start' not in bot['name']:
             l.append(''.join(bot['pairs']).replace('USDT_',''))
     # intersect with args.pairs and keep order from args.pairs...
     return l
 
 
+# Combine both with and without functions
+# stopped bots with positions
+def get_stopped_bots_with_positions(bots, account_id, positions):
+    positions_l = []
+    for position in sorted(positions, key=lambda k: (k['symbol'])):
+        if float(position['positionAmt']) != 0.0:
+            positions_l.append(position['symbol'].replace('USDT',''))
+
+    bot_l = []
+    for bot in sorted(bots, key=lambda k: (float(k['finished_deals_profit_usd'])/float(k['base_order_volume'])), reverse = True):
+        if account_id == bot['account_id'] and bot['strategy'] == "long" and not bot['is_enabled'] and 'do not start' not in bot['name']:
+            if ''.join(bot['pairs']).replace('USDT_','') in positions_l:
+                bot_l.append(''.join(bot['pairs']).replace('USDT_',''))
+    return bot_l
+
+
+# sorted stopped bots without positions
+def get_stopped_bots_without_positions(bots, account_id, positions):
+    positions_l = []
+    for position in sorted(positions, key=lambda k: (k['symbol'])):
+        if float(position['positionAmt']) != 0.0:
+            positions_l.append(position['symbol'].replace('USDT',''))
+
+    bot_l = []
+    for bot in sorted(bots, key=lambda k: (float(k['finished_deals_profit_usd'])/float(k['base_order_volume'])), reverse = True):
+        if account_id == bot['account_id'] and bot['strategy'] == "long" and not bot['is_enabled'] and 'do not start' not in bot['name']:
+            if ''.join(bot['pairs']).replace('USDT_','') not in positions_l:
+                bot_l.append(''.join(bot['pairs']).replace('USDT_',''))
+    return bot_l
+
+
+# get count of stopped bots without active positions
+def get_count_of_stopped_bots_without_positions(bots, account_id, positions):
+    positions_l = []
+    for position in sorted(positions, key=lambda k: (k['symbol'])):
+        if float(position['positionAmt']) != 0.0:
+            positions_l.append(position['symbol'].replace('USDT',''))
+
+    count = 0
+    for bot in bots:
+        if account_id == bot['account_id'] and bot['strategy'] == "long" and not bot['is_enabled'] and 'do not start' not in bot['name']:
+            if ''.join(bot['pairs']).replace('USDT_','') not in positions_l:
+                count += 1
+    return count
+
+
+# get count of started bots without active positions
+def get_count_of_started_bots_without_positions(bots, account_id, positions):
+    positions_l = []
+    for position in sorted(positions, key=lambda k: (k['symbol'])):
+        if float(position['positionAmt']) != 0.0:
+            positions_l.append(position['symbol'].replace('USDT',''))
+
+    count = 0
+    for bot in bots:
+        if account_id == bot['account_id'] and bot['strategy'] == "long" and bot['is_enabled'] and 'do not start' not in bot['name']:
+            if ''.join(bot['pairs']).replace('USDT_','') not in positions_l:
+                count += 1
+    return count
+
+
+# get a list of started bots without active positions
+def get_started_bots_without_positions(bots, account_id, positions):
+    positions_l = []
+    for position in sorted(positions, key=lambda k: (k['symbol'])):
+        if float(position['positionAmt']) != 0.0:
+            positions_l.append(position['symbol'].replace('USDT',''))
+
+    bot_l = []
+    for bot in bots:
+        if account_id == bot['account_id'] and bot['strategy'] == "long" and bot['is_enabled'] and 'do not start' not in bot['name']:
+            if ''.join(bot['pairs']).replace('USDT_','') not in positions_l:
+                bot_l.append(''.join(bot['pairs']).replace('USDT_',''))
+    return bot_l
+
+
+# return first matching accountID
+def getAccountID():
+    accounts=get3CommasAPI().getAccounts()
+    for account in accounts:
+        if account['exchange_name'] == "Binance Futures USDT-M" and args.binance_account_flag in account['exchange_name']:
+            txt = f"Using {account['name']} from exchange {account['exchange_name']}"
+            return account['id'], txt
+
+
+
 
 #----------------------------------
 #----------------------------------
 #----------------------------------
-def run_main():
+def run_account(account_id):
     account=getBinanceAPI().futuresAccount()
 
     margin_ratio = get_margin_ratio(account)
@@ -326,10 +407,8 @@ def run_main():
             else:
                 break
 
-    #account=get3CommasAPI().getAccounts()
-
     if args.show_bots or args.show_all:
-        print(show_bots(bots))
+        print(show_bots(bots, account_id))
         print("--------------------")
 
     if args.show_positions or args.show_all:
@@ -344,11 +423,10 @@ def run_main():
     print(f"{color}Margin Ratio = {margin_ratio:0.2f}%{ENDC}")
     print("--------------------")
 
-
     if args.auto:
         if margin_ratio >= args.stop_at:
             print(f"{RED}Hight margin_ratio, stopping bots...{ENDC}")
-            stop_all_bots(bots)
+            stop_all_bots(bots, account_id)
             if do_ifttt:
                 import urllib.request
                 ifttt_contents = urllib.request.urlopen(run_config.ifttt_url).read()
@@ -357,33 +435,102 @@ def run_main():
             if margin_ratio <= args.start_at:
                 #print(f"{GREEN}Low Margin Ratio, starting bots...{ENDC}")
 
-                top_stopped_pairs = get_top_stopped_pairs(bots)
+                top_stopped_pairs = get_top_stopped_pairs(bots, account_id)
                 totalMarginBalance = get_totalMarginBalance(account)
                 totalMaintMargin = get_totalMaintMargin(account)
                 max_bot_pairs = get_max_bot_pairs(totalMarginBalance)
                 active_positions_count = get_active_positions_count(account['positions'], bots)
-                total_bot_pair_count, active_bot_pair_count = get_bot_pair_count(bots)
-                bots_pairs_to_start = round(max_bot_pairs - active_positions_count)
+                total_bot_pair_count, active_bot_pair_count = get_bot_pair_count(bots, account_id)
 
                 print(f"totalMarginBalance = ${totalMarginBalance:<.2f} (${totalMaintMargin:<.2f})")
                 print(f"Bots Active/Total: {active_bot_pair_count}/{total_bot_pair_count}")
-                print(f"Delta positions ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - running ({active_positions_count})")
+                stopped_bots_count = total_bot_pair_count - active_bot_pair_count
+                #print(f"stopped_bots_count = {stopped_bots_count}")
+                position_delta_factor = (margin_ratio/args.stop_at - margin_ratio/args.start_at) * max_bot_pairs                
+                #position_delta_factor = (margin_ratio/args.stop_at) * max_bot_pairs                
+                #print(f"position_delta_factor = {position_delta_factor }")
+                position_delta_factor = round(position_delta_factor) if position_delta_factor > 0 else 0
+                #print(f"position_delta_factor = {position_delta_factor }")
+
+                bots_pairs_to_start = round(max_bot_pairs - position_delta_factor - active_positions_count)
+                print(f"Positions delta ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - MR factor ({position_delta_factor}) - running ({active_positions_count})")
                 #print(f"top_stopped_pairs = {top_stopped_pairs}")
 
                 if bots_pairs_to_start > 0 and not args.safe: # need more positions
                     if len(top_stopped_pairs) > 0:
-                        print (f"Need to start {bots_pairs_to_start} bot pairs...")
-                        burst_start = args.bot_start_bursts if args.bot_start_bursts <= bots_pairs_to_start else bots_pairs_to_start
-                        print (f"Incrementally starting up to {burst_start} this time...")
-                        burst_pairs_to_start = top_stopped_pairs[:burst_start] # Assume list is sorted
+                        stopped_bots_with_positions = get_stopped_bots_with_positions(bots, account_id, account['positions'])
+                        if len(stopped_bots_with_positions) > 0:
+                            print(f"Starting {len(stopped_bots_with_positions)} stopped bots with active positions...")
+                            for bot_to_start in stopped_bots_with_positions:
+                                print(f"Starting {bot_to_start} bot pairs...")
+                                start_bot_pair(bots, account_id, bot_to_start)
+                        else: # no stopped bots with positions to start, start from ones without active positions
+                            max_bots_running = bots_pairs_to_start * args.bots_per_position_ratio
+                            print (f"Need to start a max of {max_bots_running} stopped bot pairs...")
+                            
+                            count_of_started_bots_without_positions = get_count_of_started_bots_without_positions(bots, account_id, account['positions'])
+                            max_bots_running = max_bots_running - count_of_started_bots_without_positions
+                            #print(f"max_bots_running = {max_bots_running}")
+                            
+                            stopped_bots_without_positions = get_stopped_bots_without_positions(bots, account_id, account['positions'])
+                            actual_bots_to_start = min(max_bots_running, args.bot_start_bursts, len(stopped_bots_without_positions), max_bots_running)
+                            actual_bots_to_start = 0 if actual_bots_to_start <= 0 else actual_bots_to_start # Make sure it's not a negative number
+                            
+                            print (f"Incrementally starting {actual_bots_to_start} stopped bots without positions...")
+                            burst_pairs_to_start = stopped_bots_without_positions[:actual_bots_to_start] # Assume list is sorted
+                            for bot_to_start in burst_pairs_to_start:
+                                print(f"Starting {bot_to_start} bot pairs...")
+                                start_bot_pair(bots, account_id, bot_to_start)
+
+                        '''
+                        max_bots_running = bots_pairs_to_start * args.bots_per_position_ratio
+                        print (f"Need to start a max of {max_bots_running} stopped bot pairs...")
+                        
+                        count_of_stopped_bots_without_positions = get_count_of_stopped_bots_without_positions(bots, account_id, account['positions'])
+                        print(f"Stopped bots without positions = {count_of_stopped_bots_without_positions}")
+                        
+                        count_of_stopped_bots_with_positions = stopped_bots_count - count_of_stopped_bots_without_positions
+                        #print(f"count_of_stopped_bots_with_positions = {count_of_stopped_bots_with_positions}")
+
+                        actual_bots_to_start = min(max_bots_running, args.bot_start_bursts, count_of_stopped_bots_without_positions, count_of_stopped_bots_with_positions)
+                        
+                        #delta_bots_running = max_bots_running - active_bot_pair_count
+                        #burst_start = args.bot_start_bursts if args.bot_start_bursts <= bots_pairs_to_start else bots_pairs_to_start
+                        #actual_bots_to_start = min(delta_bots_running, burst_start)
+                        
+                        actual_bots_to_start = 0 if actual_bots_to_start <= 0 else actual_bots_to_start # Make sure it's not a negative number
+                        print (f"Incrementally starting up to {actual_bots_to_start} this time...")
+                        
+- if bots_pairs_to_start > 0
+    - if stopped bots with positions > 0
+        - start them all
+    - else
+        - start count min(burst, bots_pairs_to_start * args.bots_per_position_ratio)
+        - start sorted stopped bots without positions
+
+                        stopped_bots_without_positions = get_stopped_bots_without_positions(bots, account_id, account['positions'])
+                        print("stopped_bots_without_positions:")
+                        pprint(stopped_bots_without_positions)
+                        print("stopped_bots_with_positions:")
+                        pprint(stopped_bots_with_positions)
+                        
+                        burst_pairs_to_start = top_stopped_pairs[:actual_bots_to_start] # Assume list is sorted
                         for bot_to_start in burst_pairs_to_start:
                             print(f"Starting {bot_to_start} bot pairs...")
-                            start_bot_pair(bots, bot_to_start)
+                            start_bot_pair(bots, account_id, bot_to_start)
+                        '''
                     else:
                         print("No stopped bots to start...")
                 elif bots_pairs_to_start < 0: # running too much positions
-                    print("Hight positions count, stopping all running bots...")
-                    stop_all_bots(bots)
+                    if args.safe:
+                        print("Hight positions count, stopping all running bots...")
+                        stop_all_bots(bots, account_id)
+                    else:
+                        print("Hight positions count, stopping all running bots without positions")
+                        started_bots_without_positions = get_started_bots_without_positions(bots, account_id, account['positions'])
+                        for bot_to_stop in started_bots_without_positions:
+                            print(f"Stopping {bot_to_stop} bot pairs...")
+                            stop_bot_pair(bots, account_id, bot_to_stop)
                 else: # the right ammount of positions running
                     print("No change to positions count needed...")
 
@@ -398,15 +545,24 @@ def run_main():
 #----------------------------------
 #----------------------------------
 
+signal.signal(signal.SIGINT, signal_handler)
+
+account, account_txt = getAccountID()
+print (account_txt)
+print ("-------------------------------------------------------------")
+
 if args.keep_running:
     while True:
         try:
-            run_main()
+            run_account(account)
         except Exception as e:
             print(e)
             pass
+
+        ts_txt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(ts_txt)
         countdown(args.keep_running_timer)
 else:
-    run_main()
+    run_account(account)
 
 
