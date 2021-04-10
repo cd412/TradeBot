@@ -14,6 +14,7 @@ class API3Commas():
     methods = {
             'getAccounts': {'url': '/public/api/ver1/accounts', 'method': 'GET'},
             'getBots': {'url': '/public/api/ver1/botsOPTIONS', 'method': 'GET'},
+            'getDeals': {'url': '/public/api/ver1/dealsOPTIONS', 'method': 'GET'},
             'disableBot': {'url': '/public/api/ver1/bots/BOT_ID/disable', 'method': 'POST'},
             'enableBot': {'url': '/public/api/ver1/bots/BOT_ID/enable', 'method': 'POST'},
     }

@@ -79,6 +79,7 @@ parser.add_argument("--binance_account_flag", help='Part of binance account name
 parser.add_argument("--show_all", help='Show all info', action='store_true', default=None)
 parser.add_argument("--show_positions", help='Show current open positions', action='store_true', default=None)
 parser.add_argument("--show_bots", help='Show bots details', action='store_true', default=None)
+parser.add_argument("--show_deals", help='Show deals details', action='store_true', default=None)
 parser.add_argument("--pair_allowance", help='How much money each pair is allowed, default is $500.00 (agg is $250)', type=float, default=500.0)
 parser.add_argument("--beep", help='Beep when issues detected', action='store_true', default=None)
 #parser.add_argument("--pairs", help="A list of pairs ordered from best down, e.g. --pairs EOS ENJ AXS", nargs='+', default=None)
@@ -387,10 +388,69 @@ def getAccountID():
 
 
 
+def show_deals(deals):
+
+    # Get field from structure
+    def gf(data, field):
+        return data[field]
+
+    def get_deal_cost_reserved(deal):
+        current_active_safety_orders = gf(deal, 'current_active_safety_orders')
+        completed_safety_orders_count = deal['completed_safety_orders_count']
+        safety_order_volume = float(gf(deal, 'safety_order_volume'))
+        martingale_volume_coefficient = float(gf(deal, 'martingale_volume_coefficient'))
+        active_safety_orders_count = gf(deal, 'active_safety_orders_count')
+        max_safety_orders = gf(deal, 'max_safety_orders')
+
+        cost = 0
+        max_cost = 0
+        for i in range(completed_safety_orders_count, current_active_safety_orders + completed_safety_orders_count):
+            cost += safety_order_volume * martingale_volume_coefficient ** i    
+        for i in range(completed_safety_orders_count, max_safety_orders):
+            max_cost += safety_order_volume * martingale_volume_coefficient ** i
+        return cost, max_cost
+
+
+    ts = datetime.utcnow()
+    ts_txt = ts.strftime('%Y-%m-%dT%H:%M:%SZ')
+    total_bought_volume = 0.0
+    total_deals_cost_reserved = 0.0
+    txt = ""
+
+    active_deals = sorted(deals, key=lambda k: (float(k['bought_volume'])))#, reverse = True)
+    txt = f"{'Pair':6} : {'SOs':9} : ${'Bought':8} : ${'Reserve':7} : {'%Profit':7}\n"
+
+    for ad in active_deals:
+        error_message = ad['error_message']
+        if not ad['error_message']:
+            error_message = ''
+        if error_message != '':
+            error_message_flag = True
+        a_flag = ''
+        if ad['current_active_safety_orders_count'] == 0:
+            a_flag = f'{RED}***Zero Active***{ENDC}'
+            if ad['completed_safety_orders_count'] != ad['max_safety_orders']:
+                a_flag = f'{GREEN}***Closing/Opening***{ENDC}'
+            else:
+                zero_active = True
+
+        actual_usd_profit = float(ad['actual_usd_profit'])
+        created_at_ts = datetime.strptime(ad['created_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
+        created_at_ts_diff = ts - created_at_ts
+        reserved_cost, max_reserved_cost = get_deal_cost_reserved(ad)
+
+        txt += f"{ad['pair'].replace('USDT_',''):6} : c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} : ${float(ad['bought_volume']):8.2f} : ${reserved_cost:7.2f} : {ad['actual_profit_percentage']:6}% : ({created_at_ts_diff.days}d {int(created_at_ts_diff.total_seconds()/3600)}h {int(((created_at_ts_diff.total_seconds()/3600) - int(created_at_ts_diff.total_seconds()/3600))*60)}m) {a_flag} {RED}{error_message}{ENDC}\n"
+
+        total_bought_volume += float(ad['bought_volume'])
+        total_deals_cost_reserved += reserved_cost
+    txt += f"{'':18} : ${total_bought_volume:8.2f} : ${total_deals_cost_reserved:7.2f}"
+    return txt
+
 #----------------------------------
 #----------------------------------
 #----------------------------------
 def run_account(account_id):
+
     account=getBinanceAPI().futuresAccount()
 
     margin_ratio = get_margin_ratio(account)
@@ -413,6 +473,15 @@ def run_account(account_id):
 
     if args.show_positions or args.show_all:
         print(show_positions(account['positions']))
+        print("--------------------")
+
+    if args.show_deals or args.show_all:
+        try:
+            deals=get3CommasAPI().getDeals(OPTIONS=f"?account_id={account_id}&scope=active&limit=100")
+            print(show_deals(deals))
+        except Exception as e:
+            print(e)
+            pass
         print("--------------------")
 
     color = YELLOW
@@ -526,8 +595,8 @@ def run_account(account_id):
                         print("Hight positions count, stopping all running bots...")
                         stop_all_bots(bots, account_id)
                     else:
-                        print("Hight positions count, stopping all running bots without positions")
                         started_bots_without_positions = get_started_bots_without_positions(bots, account_id, account['positions'])
+                        print(f"Hight positions count, stopping {len(started_bots_without_positions)} bots without positions")
                         for bot_to_stop in started_bots_without_positions:
                             print(f"Stopping {bot_to_stop} bot pairs...")
                             stop_bot_pair(bots, account_id, bot_to_stop)
