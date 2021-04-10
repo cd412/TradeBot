@@ -51,15 +51,6 @@ ToDo:-
 
 XYZ:-
 
-- if bots_pairs_to_start > 0
-    - if stopped bots with positions > 0
-        - start them all
-    - else
-        - start count min(burst, bots_pairs_to_start * args.bots_per_position_ratio)
-        - start sorted stopped bots without positions
-
-stopped bots with positions
-sorted stopped bots without positions
 
 '''
 #----------------------------------
@@ -136,6 +127,10 @@ def get3CommasAPI():
         API_SECRET=run_config.TCommas_API_SECRET
     )
     return api
+
+
+def xstr(s):
+    return '' if s is None else str(s)
 
 
 def signal_handler(sig, frame):
@@ -429,11 +424,7 @@ def show_deals(deals):
     txt = f"{'Pair':6} : {'SOs':9} : ${'Bought':8} : ${'Reserve':7} : {'%Profit':7}\n"
 
     for ad in active_deals:
-        error_message = ad['error_message']
-        if not ad['error_message']:
-            error_message = ''
-        if error_message != '':
-            error_message_flag = True
+        error_message = f"{RED}{xstr(ad['error_message'])}{xstr(ad['failed_message'])}{ENDC}"
         a_flag = ''
         if ad['current_active_safety_orders_count'] == 0:
             a_flag = f'{RED}***Zero Active***{ENDC}'
@@ -447,7 +438,7 @@ def show_deals(deals):
         created_at_ts_diff = ts - created_at_ts
         reserved_cost, max_reserved_cost = get_deal_cost_reserved(ad)
 
-        txt += f"{ad['pair'].replace('USDT_',''):6} : c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} : ${float(ad['bought_volume']):8.2f} : ${reserved_cost:7.2f} : {ad['actual_profit_percentage']:6}% : ({created_at_ts_diff.days}d {int(created_at_ts_diff.total_seconds()/3600)}h {int(((created_at_ts_diff.total_seconds()/3600) - int(created_at_ts_diff.total_seconds()/3600))*60)}m) {a_flag} {RED}{error_message}{ENDC}\n"
+        txt += f"{ad['pair'].replace('USDT_',''):6} : c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} : ${float(ad['bought_volume']):8.2f} : ${reserved_cost:7.2f} : {ad['actual_profit_percentage']:6}% : ({created_at_ts_diff.days}d {int((created_at_ts_diff.total_seconds()/3600)%24)}h {int(((created_at_ts_diff.total_seconds()/3600) - int(created_at_ts_diff.total_seconds()/3600))*60)}m) {a_flag}{error_message}\n"
 
         total_bought_volume += float(ad['bought_volume'])
         total_deals_cost_reserved += reserved_cost
