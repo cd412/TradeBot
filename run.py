@@ -16,7 +16,7 @@ import signal
 Usage:-
 
 - Run main program:
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 1 --pair_allowance 375
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 1 --bots_per_position_ratio 2 --pair_allowance 375
 
 - On a seperate machine, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
 time python3 run.py --colors --auto --pair_allowance 250 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe
@@ -36,6 +36,18 @@ Notes:-
 
 
 ToDo:-
+
+- get pairs from https://coinmarketcap.com/
+
+- move functions to utils
+
+- Need to consider multiplier when starting/stopping bots an counting them, not just for positions as now ???
+
+- create files to dump all pairs in all futures accounts sorted by best to worst
+
+- generate stats on deals history per pair (how much, multiplier, how long, add short and long, $/hr, etc)
+
+- Merge deals and positions view and show if any deltas
 
 - Add notification through email or Google Home? (IFTTT is done for MR >= critical)
 
@@ -428,10 +440,11 @@ def show_deals(deals):
         a_flag = ''
         if ad['current_active_safety_orders_count'] == 0:
             a_flag = f'{RED}***Zero Active***{ENDC}'
-            if ad['completed_safety_orders_count'] != ad['max_safety_orders']:
+            #if ad['completed_safety_orders_count'] != ad['max_safety_orders']:
+            if ad['completed_safety_orders_count'] == 0:
                 a_flag = f'{GREEN}***Closing/Opening***{ENDC}'
             else:
-                zero_active = True
+                a_flag = f'{YELLOW}***SO***{ENDC}'
 
         actual_usd_profit = float(ad['actual_usd_profit'])
         created_at_ts = datetime.strptime(ad['created_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
@@ -440,7 +453,6 @@ def show_deals(deals):
         
         age_d = created_at_ts_diff.days
         age_d_str = str(age_d).rjust(2, '0')+' ' if age_d > 0 else '   '
-        #age_d_str = f"{str(created_at_ts_diff.days)+'d' if created_at_ts_diff.days > 0 else ''}"
         age_h = int((created_at_ts_diff.total_seconds()/3600)%24)
         age_h_str = str(age_h).rjust(2, '0')+':' if age_h > 0 else '   '
         age_m = int(((created_at_ts_diff.total_seconds()/3600) - int(created_at_ts_diff.total_seconds()/3600))*60)
@@ -509,7 +521,7 @@ def run_account(account_id):
                 ifttt_contents = urllib.request.urlopen(run_config.ifttt_url).read()
                 print(ifttt_contents)
         else:
-            if margin_ratio <= args.start_at:
+            #if margin_ratio <= args.start_at:
                 #print(f"{GREEN}Low Margin Ratio, starting bots...{ENDC}")
 
                 top_stopped_pairs = get_top_stopped_pairs(bots, account_id)
@@ -519,7 +531,7 @@ def run_account(account_id):
                 active_positions_count = get_active_positions_count(account['positions'], bots)
                 total_bot_pair_count, active_bot_pair_count = get_bot_pair_count(bots, account_id)
 
-                print(f"totalMarginBalance = ${totalMarginBalance:<.2f} (${totalMaintMargin:<.2f})")
+                print(f"Total Margin Balance = ${totalMarginBalance:<.2f} (${totalMaintMargin:<.2f})")
                 print(f"Bots Active/Total: {active_bot_pair_count}/{total_bot_pair_count}")
                 stopped_bots_count = total_bot_pair_count - active_bot_pair_count
                 #print(f"stopped_bots_count = {stopped_bots_count}")
@@ -543,13 +555,20 @@ def run_account(account_id):
                                 start_bot_pair(bots, account_id, bot_to_start)
                         else: # no stopped bots with positions to start, start from ones without active positions
                             max_bots_running = bots_pairs_to_start * args.bots_per_position_ratio
+                            #print(f"bots_pairs_to_start = {bots_pairs_to_start}")
+                            #print(f"args.bots_per_position_ratio = {args.bots_per_position_ratio}")
                             print (f"Need to start a max of {max_bots_running} stopped bot pairs...")
                             
                             count_of_started_bots_without_positions = get_count_of_started_bots_without_positions(bots, account_id, account['positions'])
+                            #print(f"count_of_started_bots_without_positions = {count_of_started_bots_without_positions}")
                             max_bots_running = max_bots_running - count_of_started_bots_without_positions
+                            #print(f"max_bots_running = {max_bots_running}")
                             #print(f"max_bots_running = {max_bots_running}")
                             
                             stopped_bots_without_positions = get_stopped_bots_without_positions(bots, account_id, account['positions'])
+                            #print(f"max_bots_running = {max_bots_running}")
+                            #print(f"args.bot_start_bursts = {args.bot_start_bursts}")
+                            #print(f"len(stopped_bots_without_positions) = {len(stopped_bots_without_positions)}")
                             actual_bots_to_start = min(max_bots_running, args.bot_start_bursts, len(stopped_bots_without_positions), max_bots_running)
                             actual_bots_to_start = 0 if actual_bots_to_start <= 0 else actual_bots_to_start # Make sure it's not a negative number
                             
