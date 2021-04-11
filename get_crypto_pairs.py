@@ -23,6 +23,16 @@ ToDo:-
 
 - 
 
+
+XYZ:-
+
+
+https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=3&sortBy=market_cap&sortType=desc&convert=USD,btc,eth&cryptoType=all&tagType=all&aux=ath,atl,high24h,low24h,num_market_pairs,cmc_rank,date_added,tags,platform,max_supply,circulating_supply,total_supply,volume_7d,volume_30d
+
+
+https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=3&sortBy=market_cap&sortType=desc&convert=USD&cryptoType=all&tagType=all&aux=high24h,low24h,num_market_pairs,cmc_rank,date_added,tags,platform,max_supply,circulating_supply,total_supply,volume_7d,volume_30d
+
+
 '''
 #----------------------------------
 
@@ -32,19 +42,21 @@ parser = argparse.ArgumentParser()
 
 
 parser.add_argument("--max", help='Max number pairs to return', type=int, default=30)
+parser.add_argument("--csv", help='CSV output format', action='store_true', default=None)
 parser.add_argument("--debug", help='debug', action='store_true', default=None)
 
 args = parser.parse_args()
 
 
 start = 1
-limit = 10
+limit = 30
 max_limit = args.max
 
 #----------------------------------
 
 def getCryptoCurrencyList(start, limit):
-    url = f"https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start={start}&limit={limit}&sortBy=market_cap&sortType=desc&convert=USD,btc,eth&cryptoType=all&tagType=all&aux=ath,atl,high24h,low24h,num_market_pairs,cmc_rank,date_added,tags,platform,max_supply,circulating_supply,total_supply,volume_7d,volume_30d"
+    #url = f"https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start={start}&limit={limit}&sortBy=market_cap&sortType=desc&convert=USD,btc,eth&cryptoType=all&tagType=all&aux=ath,atl,high24h,low24h,num_market_pairs,cmc_rank,date_added,tags,platform,max_supply,circulating_supply,total_supply,volume_7d,volume_30d"
+    url = f"https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start={start}&limit={limit}&sortBy=market_cap&sortType=desc&convert=USD&cryptoType=all&tagType=all&aux=high24h,low24h,num_market_pairs,cmc_rank,date_added,tags,platform,max_supply,circulating_supply,total_supply,volume_7d,volume_30d"
 
     headers = {}
     response = requests.request(
@@ -100,6 +112,7 @@ def getFullCryptoCurrencyList(start, limit, max_limit):
                     ,'usd_percentChange90d': usd_percentChange90d
                     ,'usd_volume24h': usd_volume24h
                     ,'usd_ytdPriceChangePercentage': usd_ytdPriceChangePercentage
+                    ,'cmcRank': cryptoCurrency['cmcRank']
 
                     }
             fullCryptoCurrencyList.append(coin)
@@ -111,9 +124,15 @@ def getFullCryptoCurrencyList(start, limit, max_limit):
 def showFullCryptoCurrencyList(start, limit, max_limit):
     txt = ""
     fullCryptoCurrencyList = getFullCryptoCurrencyList(start, limit, max_limit)
-    txt += f"{'Sym':5} {'Price':10} {'24h%':5} {'7d%':6} {'Market Cap':18} {'Volume (24h)':16} {'Circulating Supply (Name)'}\n"
+    if args.csv:
+        txt += f"Symbol,Rank,Price,24h Change,7d Change,Market Cap,24h Volume,Circulating Supply,Name\n"
+    else:
+        txt += f"{'Sym':4} {'Rank':4} {'Price':10} {'24h%':5} {'7d%':6} {'Market Cap':18} {'Volume (24h)':16} {'Circulating Supply (Name)'}\n"
     for ac in fullCryptoCurrencyList:
-        txt += f"{ac['symbol']:5} ${ac['usd_price']:9,.2f} {ac['usd_percentChange24h']:>4.1f}% {ac['usd_percentChange7d']:>5.1f}% ${ac['usd_marketCap']:17,.0f} ${ac['usd_volume24h']:15,.0f} {ac['circulatingSupply']:,.0f} ({ac['name']})\n"
+        if args.csv:
+            txt += f"{ac['symbol']},{ac['cmcRank']},{ac['usd_price']},{ac['usd_percentChange24h']},{ac['usd_percentChange7d']},{ac['usd_marketCap']},{ac['usd_volume24h']},{ac['circulatingSupply']},{ac['name']}\n"
+        else:
+            txt += f"{ac['symbol']:5} {ac['cmcRank']:3} ${ac['usd_price']:9,.2f} {ac['usd_percentChange24h']:>4.1f}% {ac['usd_percentChange7d']:>5.1f}% ${ac['usd_marketCap']:17,.0f} ${ac['usd_volume24h']:15,.0f} {ac['circulatingSupply']:,.0f} ({ac['name']})\n"
     return txt[:-1]
 
 #----------------------------------
