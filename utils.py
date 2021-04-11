@@ -296,10 +296,9 @@ def get_started_bots_without_positions(bots, account_id, positions):
 def getAccountID(binance_account_flag):
     accounts=get3CommasAPI().getAccounts()
     for account in accounts:
-        if account['exchange_name'] == "Binance Futures USDT-M" and binance_account_flag in account['exchange_name']:
+        if account['exchange_name'] == "Binance Futures USDT-M" and binance_account_flag in account['name']:
             txt = f"Using {account['name']} from exchange {account['exchange_name']}"
             return account['id'], txt
-
 
 
 
@@ -366,9 +365,82 @@ def show_deals(deals):
     txt += f"{'':18} : ${total_bought_volume:8.2f} : ${total_deals_cost_reserved:7.2f}"
     return txt
 
-#----------------------------------
-#----------------------------------
-#----------------------------------
+
+def show_deals_positions(deals, positions):
+
+    # Get field from structure
+    def gf(data, field):
+        return data[field]
+
+    def get_deal_cost_reserved(deal):
+        current_active_safety_orders = gf(deal, 'current_active_safety_orders')
+        completed_safety_orders_count = deal['completed_safety_orders_count']
+        safety_order_volume = float(gf(deal, 'safety_order_volume'))
+        martingale_volume_coefficient = float(gf(deal, 'martingale_volume_coefficient'))
+        active_safety_orders_count = gf(deal, 'active_safety_orders_count')
+        max_safety_orders = gf(deal, 'max_safety_orders')
+
+        cost = 0
+        max_cost = 0
+        for i in range(completed_safety_orders_count, current_active_safety_orders + completed_safety_orders_count):
+            cost += safety_order_volume * martingale_volume_coefficient ** i    
+        for i in range(completed_safety_orders_count, max_safety_orders):
+            max_cost += safety_order_volume * martingale_volume_coefficient ** i
+        return cost, max_cost
 
 
+    ts = datetime.utcnow()
+    ts_txt = ts.strftime('%Y-%m-%dT%H:%M:%SZ')
+    total_bought_volume = 0.0
+    total_deals_cost_reserved = 0.0
+    txt = ""
+
+    active_deals = sorted(deals, key=lambda k: (float(k['bought_volume'])))#, reverse = True)
+    txt = f"{'Pair':6} : {'SOs':9} : ${'Bought':8} : ${'Reserve':7} : {'%Profit':6} : ${'Price':6} : ${'TTP':6} : Age(DHM)  Amt   entryPrice\n"
+
+    for ad in active_deals:
+        #pprint(ad)
+        #exit()  take_profit_price current_price
+        position_txt = ""
+        for position in sorted(positions, key=lambda k: (k['symbol'])):
+            if ad['pair'].replace('USDT_','') == position['symbol'].replace('USDT',''):
+                if float(position['positionAmt']) != 0.0:
+                    position_txt = f" {position['positionAmt']:5} {position['entryPrice']:10}"
+
+        error_message = f"{RED}{xstr(ad['error_message'])}{xstr(ad['failed_message'])}{ENDC}"
+        if position_txt == "":
+            error_message += f"{error_message} {RED}No Position Found{ENDC}"
+        a_flag = ''
+        if ad['current_active_safety_orders_count'] == 0:
+            a_flag = f'{RED}***Zero Active***{ENDC}'
+            #if ad['completed_safety_orders_count'] != ad['max_safety_orders']:
+            if ad['completed_safety_orders_count'] == 0:
+                a_flag = f'{GREEN}***Closing/Opening***{ENDC}'
+            else:
+                a_flag = f'{YELLOW}***SO***{ENDC}'
+
+        actual_usd_profit = float(ad['actual_usd_profit'])
+        created_at_ts = datetime.strptime(ad['created_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
+        created_at_ts_diff = ts - created_at_ts
+        reserved_cost, max_reserved_cost = get_deal_cost_reserved(ad)
+        
+        age_d = created_at_ts_diff.days
+        age_d_str = str(age_d).rjust(2, '0')+' ' if age_d > 0 else '   '
+        age_h = int((created_at_ts_diff.total_seconds()/3600)%24)
+        age_h_str = str(age_h).rjust(2, '0')+':' if age_h > 0 else '   '
+        age_m = int(((created_at_ts_diff.total_seconds()/3600) - int(created_at_ts_diff.total_seconds()/3600))*60)
+        age_m_str = str(age_m).rjust(2, '0')# if age_m > 0 else '  '
+        age = f"{age_d_str:3}{age_h_str:3}{age_m_str:2}"
+
+        txt += f"{ad['pair'].replace('USDT_',''):6} : c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} : ${float(ad['bought_volume']):8.2f} : ${reserved_cost:7.2f} : {ad['actual_profit_percentage']:6}% : ${float(ad['current_price']):6.2f} : ${float(ad['take_profit_price']):6.2f} : {age} {position_txt} {a_flag}{error_message}\n"
+
+        total_bought_volume += float(ad['bought_volume'])
+        total_deals_cost_reserved += reserved_cost
+    txt += f"{'':18} : ${total_bought_volume:8.2f} : ${total_deals_cost_reserved:7.2f}"
+    return txt
+
+#----------------------------------
+#----------------------------------
+#----------------------------------
+#----------------------------------
 
