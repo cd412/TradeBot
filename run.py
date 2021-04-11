@@ -40,9 +40,7 @@ Notes:-
 
 ToDo:-
 
-- Add TPP to deals page...
-
-- Add note at bottom when running dry
+- make deal line COLOR when %profit +/-
 
 - move functions to utils
     - fix color issue in utils.py
@@ -164,7 +162,7 @@ def run_account(account_id):
     if args.show_deals or args.show_positions or args.show_all:
         try:
             deals=get3CommasAPI().getDeals(OPTIONS=f"?account_id={account_id}&scope=active&limit=100")
-            print(show_deals_positions(deals, account['positions']))
+            print(show_deals_positions(deals, account['positions'], args.colors))
             #print(show_deals(deals))
         except Exception as e:
             print(e)
@@ -270,10 +268,18 @@ if args.keep_running:
 
         ts_txt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(ts_txt)
+        if args.dry:
+            print("*************************")
+            print("***Running in DRY mode***")
+            print("*************************")
         sys.stdout.flush()
         countdown(args.keep_running_timer)
 else:
     run_account(account)
+    if args.dry:
+        print("*************************")
+        print("***Running in DRY mode***")
+        print("*************************")
     sys.stdout.flush()
 
 

@@ -12,12 +12,6 @@ from time import gmtime, strftime
 
 beep_time = 30
 
-ENDC   = ''
-RED    = ''
-GREEN  = ''
-YELLOW = ''
-
-
 #----------------------------------
 
 def getBinanceAPI():
@@ -366,7 +360,18 @@ def show_deals(deals):
     return txt
 
 
-def show_deals_positions(deals, positions):
+def show_deals_positions(deals, positions, colors):
+
+    if colors:
+        ENDC   = '\033[0m'
+        RED    = '\033[91m'
+        GREEN  = '\033[92m'
+        YELLOW = '\033[93m'
+    else:
+        ENDC   = ''
+        RED    = ''
+        GREEN  = ''
+        YELLOW = ''
 
     # Get field from structure
     def gf(data, field):
@@ -432,7 +437,12 @@ def show_deals_positions(deals, positions):
         age_m_str = str(age_m).rjust(2, '0')# if age_m > 0 else '  '
         age = f"{age_d_str:3}{age_h_str:3}{age_m_str:2}"
 
-        txt += f"{ad['pair'].replace('USDT_',''):6} : c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} : ${float(ad['bought_volume']):8.2f} : ${reserved_cost:7.2f} : {ad['actual_profit_percentage']:6}% : ${float(ad['current_price']):6.2f} : ${float(ad['take_profit_price']):6.2f} : {age} {position_txt} {a_flag}{error_message}\n"
+        color = ''
+        if float(ad['actual_profit_percentage']) < 0:
+            color = RED
+        if float(ad['actual_profit_percentage']) > 0:
+            color = GREEN
+        txt += f"{color}{ad['pair'].replace('USDT_',''):6} : c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} : ${float(ad['bought_volume']):8.2f} : ${reserved_cost:7.2f} : {ad['actual_profit_percentage']:6}% : ${float(ad['current_price']):6.2f} : ${float(ad['take_profit_price']):6.2f} : {age} {position_txt} {a_flag}{error_message}{ENDC}\n"
 
         total_bought_volume += float(ad['bought_volume'])
         total_deals_cost_reserved += reserved_cost
