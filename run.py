@@ -21,7 +21,8 @@ Usage:-
 time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 1 --bots_per_position_ratio 2 --pair_allowance 375
 
 - On a seperate machine, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
-time python3 run.py --colors --auto --pair_allowance 250 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe
+nohup python3 run.py --colors --auto --pair_allowance 250 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe &
+tail -f nohup.out
 
 
 
@@ -40,7 +41,7 @@ Notes:-
 ToDo:-
 
 
-- get pairs from https://coinmarketcap.com/
+
 
 - move functions to utils
     - fix color issue in utils.py
