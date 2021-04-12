@@ -438,9 +438,11 @@ def show_deals_positions(deals, positions, colors):
         age = f"{age_d_str:3}{age_h_str:3}{age_m_str:2}"
 
         color = ''
-        if float(ad['actual_profit_percentage']) < 0:
+        if float(ad['actual_profit_percentage']) < -2.0:
             color = RED
-        if float(ad['actual_profit_percentage']) > 0:
+        elif float(ad['actual_profit_percentage']) < 0.0:
+            color = YELLOW
+        if float(ad['actual_profit_percentage']) > 0.0:
             color = GREEN
         txt += f"{color}{ad['pair'].replace('USDT_',''):6} {position_txt} c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} ${float(ad['bought_volume']):7.2f} ${reserved_cost:7.2f} {ad['actual_profit_percentage']:6}% ${float(ad['current_price']):6.2f} ${float(ad['take_profit_price']):6.2f} {age} {a_flag}{error_message}{ENDC}\n"
 
