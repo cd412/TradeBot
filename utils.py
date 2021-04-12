@@ -401,7 +401,7 @@ def show_deals_positions(deals, positions, colors):
     txt = ""
 
     active_deals = sorted(deals, key=lambda k: (float(k['bought_volume'])))#, reverse = True)
-    txt = f"{'Pair':6} {'Amt':5} {'entPrice':10} {'SOs':9} ${'Bought':8} ${'Reserve':7} {'%Profit':6} ${'Price':6} ${'TTP':6} Age(DHM)\n"
+    txt = f"{'Pair':6} {'Amt':5} {'entPrice':10} {'SOs':9} ${'Bought':7} ${'Reserve':7} {'%Profit':6} ${'Price':6} ${'TTP':6} Age(DHM)\n"
 
     for ad in active_deals:
         #pprint(ad)
@@ -442,10 +442,22 @@ def show_deals_positions(deals, positions, colors):
             color = RED
         if float(ad['actual_profit_percentage']) > 0:
             color = GREEN
-        txt += f"{color}{ad['pair'].replace('USDT_',''):6} {position_txt} c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} ${float(ad['bought_volume']):8.2f} ${reserved_cost:7.2f} {ad['actual_profit_percentage']:6}% ${float(ad['current_price']):6.2f} ${float(ad['take_profit_price']):6.2f} {age} {a_flag}{error_message}{ENDC}\n"
+        txt += f"{color}{ad['pair'].replace('USDT_',''):6} {position_txt} c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} ${float(ad['bought_volume']):7.2f} ${reserved_cost:7.2f} {ad['actual_profit_percentage']:6}% ${float(ad['current_price']):6.2f} ${float(ad['take_profit_price']):6.2f} {age} {a_flag}{error_message}{ENDC}\n"
 
         total_bought_volume += float(ad['bought_volume'])
         total_deals_cost_reserved += reserved_cost
+
+    for position in sorted(positions, key=lambda k: (k['symbol'])):
+        if float(position['positionAmt']) != 0.0:
+            found_position_without_deal = False
+            for ad in active_deals:
+                if ad['pair'].replace('USDT_','') == position['symbol'].replace('USDT',''):
+                    found_position_without_deal = True
+            if not found_position_without_deal:
+                txt += f"{position['symbol'].replace('USDT',''):6} {position['positionAmt']:5} {position['entryPrice']:10} {RED}No Deal for position found{ENDC}\n"
+
+
+
     txt += f"{'':33} ${total_bought_volume:8.2f} ${total_deals_cost_reserved:7.2f}"
     return txt
 

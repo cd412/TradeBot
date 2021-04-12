@@ -22,6 +22,9 @@ Suggested:
 time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 1 --bots_per_position_ratio 2 --pair_allowance 375 --binance_account_flag "Main"
 
 
+
+
+
 Actual:
 
 time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --pair_allowance 250 --binance_account_flag "Main"
@@ -31,10 +34,10 @@ time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2
 
 - On a seperate machine, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
 nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe --binance_account_flag "Main" &
-tail -f nohup.out
-
 nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe --binance_account_flag "Sub 01" &
 tail -f nohup.out
+
+
 
 
 Notes:-
@@ -264,6 +267,9 @@ def run_account(account_id, api_key, api_secret):
 
 signal.signal(signal.SIGINT, signal_handler)
 
+print ("-----------------------------------------------------------------")
+print ("-----------------------------------------------------------------")
+
 found_account = False
 try:
     _ = run_config.Binance_APIs
@@ -287,7 +293,7 @@ if not found_account:
 
 account, account_txt = getAccountID(account_name)
 print (account_txt)
-print ("-------------------------------------------------------------")
+print ("-----------------------------------------------------------------")
 
 if args.keep_running:
     while True:
