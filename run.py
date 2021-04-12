@@ -27,14 +27,18 @@ time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2
 
 Actual:
 
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 90 --pair_allowance 250 --binance_account_flag "Main"
+cd ~/Downloads/3CommasAPI/
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 80 --pair_allowance 250 --binance_account_flag "Main"
 
 time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 90 --pair_allowance 250 --binance_account_flag "Sub 01"
 
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 100 --pair_allowance 250 --binance_account_flag "Sub 02"
 
-- On a seperate machine, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
-nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe --binance_account_flag "Main" &
-nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe --binance_account_flag "Sub 01" &
+
+- On a 2 seperate machines, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
+nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Main" &
+nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Sub 01" &
+nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Sub 02" &
 tail -f nohup.out
 
 
@@ -56,8 +60,11 @@ ToDo:-
 
 - deal with connection reset errors
     - wait for a bit and try again
+    - ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
 
 - Fix potential None to float errors in reports
+    - float() argument must be a string or a number, not 'NoneType'
+
 
 - make deal line COLOR when %profit +/-
 

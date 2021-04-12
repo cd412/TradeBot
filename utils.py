@@ -417,7 +417,8 @@ def show_deals_positions(deals, positions, colors):
 
         error_message = f"{RED}{xstr(ad['error_message'])}{xstr(ad['failed_message'])}{ENDC}"
         if position_txt == "":
-            error_message += f"{error_message} {RED}No Position Found{ENDC}"
+            #error_message += f"{error_message} {RED}No Position Found{ENDC}"
+            position_txt = f"{RED}NoPosition Found{ENDC}"
         a_flag = ''
         if ad['current_active_safety_orders_count'] == 0:
             a_flag = f'{RED}***Zero Active***{ENDC}'
