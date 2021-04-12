@@ -27,9 +27,9 @@ time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2
 
 Actual:
 
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --pair_allowance 250 --binance_account_flag "Main"
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 90 --pair_allowance 250 --binance_account_flag "Main"
 
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --pair_allowance 250 --binance_account_flag "Sub 01"
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 90 --pair_allowance 250 --binance_account_flag "Sub 01"
 
 
 - On a seperate machine, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
@@ -53,6 +53,11 @@ Notes:-
 
 
 ToDo:-
+
+- deal with connection reset errors
+    - wait for a bit and try again
+
+- Fix potential None to float errors in reports
 
 - make deal line COLOR when %profit +/-
 
@@ -126,11 +131,15 @@ if args.colors:
     RED    = '\033[91m'
     GREEN  = '\033[92m'
     YELLOW = '\033[93m'
+    BLINK  = '\033[5m'
+    BOLD   = '\033[1m'
 else:
     ENDC   = ''
     RED    = ''
     GREEN  = ''
     YELLOW = ''
+    BLINK  = ''
+    BOLD   = ''
 
 
 #----------------------------------
@@ -181,15 +190,18 @@ def run_account(account_id, api_key, api_secret):
         except Exception as e:
             print(e)
             pass
-        print("--------------------")
+        #print("--------------------")
 
-    color = YELLOW
+    color = YELLOW+BLINK
     if margin_ratio >= args.stop_at:
-        color = RED
+        color = RED+BLINK+BOLD
     if margin_ratio <= args.start_at:
         color = GREEN
-    print(f"{color}Margin Ratio = {margin_ratio:0.2f}%{ENDC}")
-    print("--------------------")
+
+    print(f"{color}****************************{ENDC}")
+    print(f"{color}*** Margin Ratio = {margin_ratio:0.2f}% ***{ENDC}")
+    print(f"{color}****************************{ENDC}")
+    #print("--------------------")
 
     if args.auto:
         if margin_ratio >= args.stop_at:
@@ -292,11 +304,11 @@ if not found_account:
 
 
 account, account_txt = getAccountID(account_name)
-print (account_txt)
-print ("-----------------------------------------------------------------")
 
 if args.keep_running:
     while True:
+        print (account_txt)
+        print ("-----------------------------------------------------------------")
         try:
             run_account(account, Binance_API_KEY, Binance_API_SECRET)
             sys.stdout.flush()
@@ -304,15 +316,18 @@ if args.keep_running:
             print(e)
             pass
 
-        ts_txt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(ts_txt)
+        #ts_txt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        #print(f"      - {ts_txt}", end='')
         if args.dry:
             print("*************************")
             print("***Running in DRY mode***")
             print("*************************")
         sys.stdout.flush()
         countdown(args.keep_running_timer)
+        print ("-----------------------------------------------------------------")
 else:
+    print (account_txt)
+    print ("-----------------------------------------------------------------")
     run_account(account, Binance_API_KEY, Binance_API_SECRET)
     if args.dry:
         print("*************************")

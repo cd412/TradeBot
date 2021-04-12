@@ -40,10 +40,13 @@ def signal_handler(sig, frame):
 
 
 def countdown(t):
+    #print("", end="\r")
     while t:
         mins, secs = divmod(t, 60)
         timer = '{:02d}:{:02d}'.format(mins, secs)
-        print(timer, end="\r")
+        #print(timer, end="\r")
+        ts_txt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"{timer} - {ts_txt}", end="\r")
         time.sleep(1)
         t -= 1
 
@@ -460,7 +463,7 @@ def show_deals_positions(deals, positions, colors):
 
 
 
-    txt += f"{'':33} ${total_bought_volume:8.2f} ${total_deals_cost_reserved:7.2f}"
+    txt += f"{'':33} ${total_bought_volume:7.2f} ${total_deals_cost_reserved:7.2f}"
     return txt
 
 #----------------------------------
