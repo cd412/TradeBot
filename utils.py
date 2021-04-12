@@ -14,10 +14,10 @@ beep_time = 30
 
 #----------------------------------
 
-def getBinanceAPI():
+def getBinanceAPI(key, secret):
     api = Binance(
-        API_KEY=run_config.Binance_API_KEY,
-        API_SECRET=run_config.Binance_API_SECRET
+        API_KEY=key,
+        API_SECRET=secret
     )
     return api
 
@@ -401,7 +401,7 @@ def show_deals_positions(deals, positions, colors):
     txt = ""
 
     active_deals = sorted(deals, key=lambda k: (float(k['bought_volume'])))#, reverse = True)
-    txt = f"{'Pair':6} : {'SOs':9} : ${'Bought':8} : ${'Reserve':7} : {'%Profit':6} : ${'Price':6} : ${'TTP':6} : Age(DHM)  Amt   entryPrice\n"
+    txt = f"{'Pair':6} {'Amt':5} {'entPrice':10} {'SOs':9} ${'Bought':8} ${'Reserve':7} {'%Profit':6} ${'Price':6} ${'TTP':6} Age(DHM)\n"
 
     for ad in active_deals:
         #pprint(ad)
@@ -410,7 +410,7 @@ def show_deals_positions(deals, positions, colors):
         for position in sorted(positions, key=lambda k: (k['symbol'])):
             if ad['pair'].replace('USDT_','') == position['symbol'].replace('USDT',''):
                 if float(position['positionAmt']) != 0.0:
-                    position_txt = f" {position['positionAmt']:5} {position['entryPrice']:10}"
+                    position_txt = f"{position['positionAmt']:5} {position['entryPrice']:10}"
 
         error_message = f"{RED}{xstr(ad['error_message'])}{xstr(ad['failed_message'])}{ENDC}"
         if position_txt == "":
@@ -442,11 +442,11 @@ def show_deals_positions(deals, positions, colors):
             color = RED
         if float(ad['actual_profit_percentage']) > 0:
             color = GREEN
-        txt += f"{color}{ad['pair'].replace('USDT_',''):6} : c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} : ${float(ad['bought_volume']):8.2f} : ${reserved_cost:7.2f} : {ad['actual_profit_percentage']:6}% : ${float(ad['current_price']):6.2f} : ${float(ad['take_profit_price']):6.2f} : {age} {position_txt} {a_flag}{error_message}{ENDC}\n"
+        txt += f"{color}{ad['pair'].replace('USDT_',''):6} {position_txt} c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} ${float(ad['bought_volume']):8.2f} ${reserved_cost:7.2f} {ad['actual_profit_percentage']:6}% ${float(ad['current_price']):6.2f} ${float(ad['take_profit_price']):6.2f} {age} {a_flag}{error_message}{ENDC}\n"
 
         total_bought_volume += float(ad['bought_volume'])
         total_deals_cost_reserved += reserved_cost
-    txt += f"{'':18} : ${total_bought_volume:8.2f} : ${total_deals_cost_reserved:7.2f}"
+    txt += f"{'':33} ${total_bought_volume:8.2f} ${total_deals_cost_reserved:7.2f}"
     return txt
 
 #----------------------------------

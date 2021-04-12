@@ -18,12 +18,23 @@ import signal
 Usage:-
 
 - Run main program:
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 1 --bots_per_position_ratio 2 --pair_allowance 375
+Suggested:
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 1 --bots_per_position_ratio 2 --pair_allowance 375 --binance_account_flag "Main"
+
+
+Actual:
+
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --pair_allowance 250 --binance_account_flag "Main"
+
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --pair_allowance 250 --binance_account_flag "Sub 01"
+
 
 - On a seperate machine, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
-nohup python3 run.py --colors --auto --pair_allowance 250 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe &
+nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe --binance_account_flag "Main" &
 tail -f nohup.out
 
+nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.5 --keep_running_timer 600 --safe --binance_account_flag "Sub 01" &
+tail -f nohup.out
 
 
 Notes:-
@@ -81,7 +92,7 @@ parser.add_argument("--stop_at", help='Stop bots when Margin Ratio >= value', ty
 parser.add_argument("--start_at", help='Start bots when Margin Ratio <= value', type=float, default=1.5)
 parser.add_argument("--bot_start_bursts", help='Number of bots to start each time', type=int, default=3)
 parser.add_argument("--bots_per_position_ratio", help='Open a max number of bots ratio for each needed position', type=int, default=3)
-parser.add_argument("--binance_account_flag", help='Part of binance account name identifier', default="Futures")
+parser.add_argument("--binance_account_flag", help='Part of binance account name identifier', default="Main")
 
 parser.add_argument("--show_all", help='Show all info', action='store_true', default=None)
 parser.add_argument("--show_positions", help='Show current open positions', action='store_true', default=None)
@@ -133,9 +144,9 @@ except Exception:
 #----------------------------------
 #----------------------------------
 #----------------------------------
-def run_account(account_id):
+def run_account(account_id, api_key, api_secret):
 
-    account=getBinanceAPI().futuresAccount()
+    account=getBinanceAPI(api_key, api_secret).futuresAccount()
 
     margin_ratio = get_margin_ratio(account)
 
@@ -253,14 +264,35 @@ def run_account(account_id):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-account, account_txt = getAccountID(args.binance_account_flag)
+found_account = False
+try:
+    _ = run_config.Binance_APIs
+    for Binance_API in run_config.Binance_APIs:
+        #print(
+        if args.binance_account_flag in Binance_API['account_name']:
+            found_account = True
+            account_name = Binance_API['account_name']
+            Binance_API_KEY = Binance_API['Binance_API_KEY']
+            Binance_API_SECRET = Binance_API['Binance_API_SECRET']
+except Exception:
+    found_account = True
+    account_name = args.binance_account_flag
+    Binance_API_KEY = run_config.Binance_API_KEY
+    Binance_API_SECRET = run_config.Binance_API_KEY
+
+if not found_account:
+    print(f"Error: could not find account with flag {args.binance_account_flag}")
+    exit(1)
+
+
+account, account_txt = getAccountID(account_name)
 print (account_txt)
 print ("-------------------------------------------------------------")
 
 if args.keep_running:
     while True:
         try:
-            run_account(account)
+            run_account(account, Binance_API_KEY, Binance_API_SECRET)
             sys.stdout.flush()
         except Exception as e:
             print(e)
@@ -275,7 +307,7 @@ if args.keep_running:
         sys.stdout.flush()
         countdown(args.keep_running_timer)
 else:
-    run_account(account)
+    run_account(account, Binance_API_KEY, Binance_API_SECRET)
     if args.dry:
         print("*************************")
         print("***Running in DRY mode***")
