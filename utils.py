@@ -33,6 +33,8 @@ def get3CommasAPI():
 def xstr(s):
     return '' if s is None else str(s)
 
+def xfloat(s):
+    return 0.0 if s is None else float(s)
 
 def signal_handler(sig, frame):
     print('\nYou pressed Ctrl+C!')
@@ -114,9 +116,8 @@ def show_bots(bots, account_id):
 
 def list_bot_pairs(bots, account_id, strategy = "long"):
     txt = ""
-    for bot in sorted(bots, key=lambda k: (float(k['finished_deals_profit_usd']))):
-        #long_p = 0.0
-        #short_p = 0.0
+    #for bot in sorted(bots, key=lambda k: (float(k['finished_deals_profit_usd']))):
+    for bot in sorted(bots, key=lambda k: (''.join(k['pairs']).replace('USDT_',''))):
         if account_id == bot['account_id']:
             if bot['strategy'] == strategy:
                 txt += f"{''.join(bot['pairs']).replace('USDT_','')} {float(bot['finished_deals_profit_usd'])/(float(bot['base_order_volume'])//10):.2f}\n"
@@ -366,6 +367,8 @@ def show_deals(deals):
     return txt
 
 
+
+
 def show_deals_positions(deals, positions, colors):
 
     if colors:
@@ -373,11 +376,17 @@ def show_deals_positions(deals, positions, colors):
         RED    = '\033[91m'
         GREEN  = '\033[92m'
         YELLOW = '\033[93m'
+        BLINK  = '\033[5m'
+        BOLD   = '\033[1m'
+        BLUE   = '\033[94m'
     else:
         ENDC   = ''
         RED    = ''
         GREEN  = ''
         YELLOW = ''
+        BLINK  = ''
+        BOLD   = ''
+        BLUE   = ''
 
     # Get field from structure
     def gf(data, field):
@@ -386,8 +395,8 @@ def show_deals_positions(deals, positions, colors):
     def get_deal_cost_reserved(deal):
         current_active_safety_orders = gf(deal, 'current_active_safety_orders')
         completed_safety_orders_count = deal['completed_safety_orders_count']
-        safety_order_volume = float(gf(deal, 'safety_order_volume'))
-        martingale_volume_coefficient = float(gf(deal, 'martingale_volume_coefficient'))
+        safety_order_volume = xfloat(gf(deal, 'safety_order_volume'))
+        martingale_volume_coefficient = xfloat(gf(deal, 'martingale_volume_coefficient'))
         active_safety_orders_count = gf(deal, 'active_safety_orders_count')
         max_safety_orders = gf(deal, 'max_safety_orders')
 
@@ -406,8 +415,8 @@ def show_deals_positions(deals, positions, colors):
     total_deals_cost_reserved = 0.0
     txt = ""
 
-    active_deals = sorted(deals, key=lambda k: (float(k['bought_volume'])))#, reverse = True)
-    txt = f"{'Pair':6} {'Amt':5} {'entPrice':10} {'SOs':9} ${'Bought':7} ${'Reserve':7} {'%Profit':6} ${'Price':6} ${'TTP':6} Age(DHM)\n"
+    active_deals = sorted(deals, key=lambda k: (xfloat(k['bought_volume'])))#, reverse = True)
+    txt = f"{'Pair':6} {'%Profit':6} {'Amt':5} {'entPrice':10} {'SOs':9} ${'Bought':7} ${'Reserve':7} ${'Price':6} ${'TTP':6} Age(DHM)\n"
 
     for ad in active_deals:
         #pprint(ad)
@@ -415,7 +424,7 @@ def show_deals_positions(deals, positions, colors):
         position_txt = ""
         for position in sorted(positions, key=lambda k: (k['symbol'])):
             if ad['pair'].replace('USDT_','') == position['symbol'].replace('USDT',''):
-                if float(position['positionAmt']) != 0.0:
+                if xfloat(position['positionAmt']) != 0.0:
                     position_txt = f"{position['positionAmt']:5} {position['entryPrice']:10}"
 
         error_message = f"{RED}{xstr(ad['error_message'])}{xstr(ad['failed_message'])}{ENDC}"
@@ -431,7 +440,7 @@ def show_deals_positions(deals, positions, colors):
             else:
                 a_flag = f'{YELLOW}***SO***{ENDC}'
 
-        actual_usd_profit = float(ad['actual_usd_profit'])
+        actual_usd_profit = xfloat(ad['actual_usd_profit'])
         created_at_ts = datetime.strptime(ad['created_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
         created_at_ts_diff = ts - created_at_ts
         reserved_cost, max_reserved_cost = get_deal_cost_reserved(ad)
@@ -445,19 +454,25 @@ def show_deals_positions(deals, positions, colors):
         age = f"{age_d_str:3}{age_h_str:3}{age_m_str:2}"
 
         color = ''
-        if float(ad['actual_profit_percentage']) < -2.0:
+        if xfloat(ad['actual_profit_percentage']) < -10.0:
+            color = RED + BLINK + BOLD
+        elif xfloat(ad['actual_profit_percentage']) < -5.0:
+            color = RED + BOLD
+        elif xfloat(ad['actual_profit_percentage']) < -2.0:
             color = RED
-        elif float(ad['actual_profit_percentage']) < 0.0:
+        elif xfloat(ad['actual_profit_percentage']) < 0.0:
             color = YELLOW
-        if float(ad['actual_profit_percentage']) > 0.0:
+        if xfloat(ad['actual_profit_percentage']) > 0.49:
+            color = BLUE
+        elif xfloat(ad['actual_profit_percentage']) > 0.0:
             color = GREEN
-        txt += f"{color}{ad['pair'].replace('USDT_',''):6} {position_txt} c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} ${float(ad['bought_volume']):7.2f} ${reserved_cost:7.2f} {ad['actual_profit_percentage']:6}% ${float(ad['current_price']):6.2f} ${float(ad['take_profit_price']):6.2f} {age} {a_flag}{error_message}{ENDC}\n"
+        txt += f"{color}{ad['pair'].replace('USDT_',''):6} {xfloat(ad['actual_profit_percentage']):6.2f}% {position_txt} c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} ${xfloat(ad['bought_volume']):7.2f} ${reserved_cost:7.2f} ${xfloat(ad['current_price']):6.2f} ${xfloat(ad['take_profit_price']):6.2f} {age} {a_flag}{error_message}{ENDC}\n"
 
-        total_bought_volume += float(ad['bought_volume'])
+        total_bought_volume += xfloat(ad['bought_volume'])
         total_deals_cost_reserved += reserved_cost
 
     for position in sorted(positions, key=lambda k: (k['symbol'])):
-        if float(position['positionAmt']) != 0.0:
+        if xfloat(position['positionAmt']) != 0.0:
             found_position_without_deal = False
             for ad in active_deals:
                 if ad['pair'].replace('USDT_','') == position['symbol'].replace('USDT',''):
@@ -467,7 +482,7 @@ def show_deals_positions(deals, positions, colors):
 
 
 
-    txt += f"{'':33} ${total_bought_volume:7.2f} ${total_deals_cost_reserved:7.2f}"
+    txt += f"{'':41} ${total_bought_volume:7.2f} ${total_deals_cost_reserved:7.2f}"
     return txt
 
 #----------------------------------

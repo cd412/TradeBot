@@ -184,8 +184,12 @@ def run_account(account_id, api_key, api_secret):
                 break
 
     if args.show_bots or args.show_all:
-        print(show_bots(bots, account_id))
-        print("--------------------")
+        try:
+            print(show_bots(bots, account_id))
+            print("--------------------")
+        except Exception as e:
+            print(e)
+            pass
     '''
     if args.show_positions or args.show_all:
         print(show_positions(account['positions']))
@@ -194,7 +198,14 @@ def run_account(account_id, api_key, api_secret):
     if args.show_deals or args.show_positions or args.show_all:
         try:
             deals=get3CommasAPI().getDeals(OPTIONS=f"?account_id={account_id}&scope=active&limit=100")
+            show_deals_positions_txt = show_deals_positions(deals, account['positions'], args.colors)
             print(show_deals_positions(deals, account['positions'], args.colors))
+            if "Error" in show_deals_positions_txt:
+                beep(5)
+                #if do_ifttt:
+                #    import urllib.request
+                #    ifttt_contents = urllib.request.urlopen(run_config.ifttt_url).read()
+                #    print(ifttt_contents)
             #print(show_deals(deals))
         except Exception as e:
             print(e)
@@ -278,8 +289,8 @@ def run_account(account_id, api_key, api_secret):
     if args.beep and margin_ratio >= args.stop_at:
         beep(beep_time)
 
-    if args.beep:
-        beep(1)
+    #if args.beep:
+    #    beep(1)
 
 
 #----------------------------------
