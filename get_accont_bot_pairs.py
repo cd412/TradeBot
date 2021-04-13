@@ -45,7 +45,9 @@ while True:
     else:
         break
 
-print(list_bot_pairs(bots, account_id))
+print(list_bot_pairs(bots, account_id, "long"))
+print("--------------------")
+print(list_bot_pairs(bots, account_id, "short"))
 print("--------------------")
 
 

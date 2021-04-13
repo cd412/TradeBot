@@ -12,6 +12,7 @@ import run_config
 from datetime import datetime
 from time import gmtime, strftime
 import signal
+from timeout import timeout
 
 #----------------------------------
 '''
@@ -36,9 +37,9 @@ time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2
 
 
 - On a 2 seperate machines, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
-nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Main" &
-nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Sub 01" &
-nohup python3 run.py --colors --auto --pair_allowance 200 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Sub 02" &
+nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Main" &
+nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Sub 01" &
+nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Sub 02" &
 tail -f nohup.out
 
 
@@ -163,6 +164,7 @@ except Exception:
 #----------------------------------
 #----------------------------------
 #----------------------------------
+@timeout(30)
 def run_account(account_id, api_key, api_secret):
 
     account=getBinanceAPI(api_key, api_secret).futuresAccount()
@@ -314,6 +316,7 @@ account, account_txt = getAccountID(account_name)
 
 if args.keep_running:
     while True:
+        keep_running_timer = args.keep_running_timer
         print (account_txt)
         print ("-----------------------------------------------------------------")
         try:
@@ -321,6 +324,7 @@ if args.keep_running:
             sys.stdout.flush()
         except Exception as e:
             print(e)
+            keep_running_timer = int(args.keep_running_timer/10)
             pass
 
         #ts_txt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -330,7 +334,7 @@ if args.keep_running:
             print("***Running in DRY mode***")
             print("*************************")
         sys.stdout.flush()
-        countdown(args.keep_running_timer)
+        countdown(keep_running_timer)
         print ("-----------------------------------------------------------------")
 else:
     print (account_txt)

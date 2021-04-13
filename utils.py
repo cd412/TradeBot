@@ -112,11 +112,14 @@ def show_bots(bots, account_id):
     return txt[:-1]
 
 
-def list_bot_pairs(bots, account_id):
+def list_bot_pairs(bots, account_id, strategy = "long"):
     txt = ""
-    for bot in sorted(bots, key=lambda k: (''.join(k['pairs']), k['strategy'])):
-        if account_id == bot['account_id'] and bot['strategy'] == 'long':
-            txt += f"{''.join(bot['pairs']).replace('USDT_','')}\n"
+    for bot in sorted(bots, key=lambda k: (float(k['finished_deals_profit_usd']))):
+        #long_p = 0.0
+        #short_p = 0.0
+        if account_id == bot['account_id']:
+            if bot['strategy'] == strategy:
+                txt += f"{''.join(bot['pairs']).replace('USDT_','')} {float(bot['finished_deals_profit_usd'])/(float(bot['base_order_volume'])//10):.2f}\n"
     return txt[:-1]
 
 
