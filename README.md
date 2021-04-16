@@ -12,8 +12,6 @@ Here we add more bots and once we get to the 10 positions, we stop all the other
 ### If you find this useful, Buy me a Bubly
 ```
 ETH: 0xce998ec4898877e17492af9248014d67590c0f46
-```
-```
 BTC: 1BQT7tZxStdgGewcgiXjx8gFJAYA4yje6J
 ```
 
