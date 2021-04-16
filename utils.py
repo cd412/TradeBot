@@ -419,6 +419,13 @@ def show_deals_positions(deals, positions, colors):
     txt = f"{'Pair':6} {'%Profit':6} {'Amt':5} {'entPrice':10} {'SOs':9} ${'Bought':7} ${'Reserve':7} ${'Price':6} ${'TTP':6} Age(DHM)\n"
 
     for ad in active_deals:
+    
+        #if 'BAL' in ad['pair'].replace('USDT_',''):
+        #    txt += f"{ad}\n"
+    
+    
+        created_at_ts = datetime.strptime(ad['created_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
+        created_at_ts_diff = ts - created_at_ts
         #pprint(ad)
         #exit()  take_profit_price current_price
         position_txt = ""
@@ -429,20 +436,20 @@ def show_deals_positions(deals, positions, colors):
 
         error_message = f"{RED}{xstr(ad['error_message'])}{xstr(ad['failed_message'])}{ENDC}"
         if position_txt == "":
-            #error_message += f"{error_message} {RED}No Position Found{ENDC}"
-            position_txt = f"{RED}NoPosition Found{ENDC}"
+            if created_at_ts_diff.total_seconds() < 90:
+                position_txt = f"No Positions Yet"
+            else:
+                position_txt = f"{RED}NoPosition Found{ENDC}"
         a_flag = ''
         if ad['current_active_safety_orders_count'] == 0:
-            a_flag = f'{RED}***Zero Active***{ENDC}'
+            a_flag = f'\n    {RED}***Zero Active***{ENDC}'
             #if ad['completed_safety_orders_count'] != ad['max_safety_orders']:
             if ad['completed_safety_orders_count'] == 0:
-                a_flag = f'{GREEN}***Closing/Opening***{ENDC}'
+                a_flag = f'\n    {GREEN}***Closing/Opening***{ENDC}'
             else:
-                a_flag = f'{YELLOW}***SO***{ENDC}'
+                a_flag = f'\n    {YELLOW}***SO***{ENDC}'
 
         actual_usd_profit = xfloat(ad['actual_usd_profit'])
-        created_at_ts = datetime.strptime(ad['created_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
-        created_at_ts_diff = ts - created_at_ts
         reserved_cost, max_reserved_cost = get_deal_cost_reserved(ad)
         
         age_d = created_at_ts_diff.days
@@ -462,11 +469,31 @@ def show_deals_positions(deals, positions, colors):
             color = RED
         elif xfloat(ad['actual_profit_percentage']) < 0.0:
             color = YELLOW
-        if xfloat(ad['actual_profit_percentage']) > 0.49:
+        if xfloat(ad['actual_profit_percentage']) >= 0.42:
             color = BLUE
         elif xfloat(ad['actual_profit_percentage']) > 0.0:
             color = GREEN
         txt += f"{color}{ad['pair'].replace('USDT_',''):6} {xfloat(ad['actual_profit_percentage']):6.2f}% {position_txt} c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} ${xfloat(ad['bought_volume']):7.2f} ${reserved_cost:7.2f} ${xfloat(ad['current_price']):6.2f} ${xfloat(ad['take_profit_price']):6.2f} {age} {a_flag}{error_message}{ENDC}\n"
+
+
+        # Special case handeling
+        if "error" in error_message.lower():
+            txt += f"{RED}Detected error in deal ID {ad['id']}{ENDC}\n"
+            if xfloat(ad['actual_profit_percentage']) > 0.01:
+                txt += f"{GREEN}Detected +ve profit ({xfloat(ad['actual_profit_percentage']):0.2f}%) in deal ID {ad['id']}{ENDC}\n"
+                txt += f"{YELLOW}Panic Selling deal ID {ad['id']} at {xfloat(ad['actual_profit_percentage']):0.2f}%{ENDC}\n"
+                #txt += "********* DRY No-Op*********\n"
+                panicSell = get3CommasAPI().panicSellDeal(DEAL_ID=f"{ad['id']}")
+                txt += f"{panicSell}\n"
+                #beep(beep_time)
+            else:
+                txt += f"{RED}Detected -ve profit ({xfloat(ad['actual_profit_percentage']):0.2f}%) in deal ID {ad['id']}{ENDC}\n"
+                txt += f"{RED}********* Manual action needed *********{ENDC}\n"
+                #beep(beep_time)
+        #elif ad['current_active_safety_orders_count'] == 0:
+        #    txt += "Detected zero active SO count...\n"
+        #    txt += f"{ad}\n" ### Testing to see if we can identify if this is an issue or not...
+
 
         total_bought_volume += xfloat(ad['bought_volume'])
         total_deals_cost_reserved += reserved_cost

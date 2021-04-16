@@ -16,6 +16,27 @@ from timeout import timeout
 
 #----------------------------------
 '''
+
+Goal:-
+
+The goal here is to maximize the amount of positions you have while maintaining your safety levels when using Block Party Future Sniper bot with Binance Futures in 3Commas.
+We do this by creating way more bots than we need and starting/stopping them as needed to get to the optimal positions count for the account.
+E.g. for a $5000 account, assuming you want $500 per position, you will need 10 positions opened.  With 10 bots you will mostly stay under than number.
+Here we add more bots and once we get to the 10 positions, we stop all the other bots.  We restart them (~in order of profitability based on history) once we drop bellow targetted positions.
+
+
+
+If you find this useful, Buy me a Bubly:-
+ETH: 0xce998ec4898877e17492af9248014d67590c0f46
+BTC: 1BQT7tZxStdgGewcgiXjx8gFJAYA4yje6J
+
+
+
+Disclaimer:-
+Use this at your own risk.  There are inherent risks in bot trading and in adding this layer of automation on top of it.  I'm not responsible for anything :)
+This is still work in progress.
+
+
 Usage:-
 
 - Run main program:
@@ -23,23 +44,20 @@ Suggested:
 time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 1 --bots_per_position_ratio 2 --pair_allowance 375 --binance_account_flag "Main"
 
 
-
-
-
 Actual:
 
 cd ~/Downloads/3CommasAPI/
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 80 --pair_allowance 250 --binance_account_flag "Main"
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 60 --pair_allowance 250 --binance_account_flag "Main"
 
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 90 --pair_allowance 250 --binance_account_flag "Sub 01"
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 65 --pair_allowance 250 --binance_account_flag "Sub 01"
 
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2.5 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 100 --pair_allowance 250 --binance_account_flag "Sub 02"
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 70 --pair_allowance 250 --binance_account_flag "Sub 02"
 
 
 - On a 2 seperate machines, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
-nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Main" &
-nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Sub 01" &
-nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.6 --keep_running_timer 600 --safe --binance_account_flag "Sub 02" &
+nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.5 --keep_running_timer 1800 --safe --binance_account_flag "Main" &
+nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.5 --keep_running_timer 1800 --safe --binance_account_flag "Sub 01" &
+nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.5 --keep_running_timer 1800 --safe --binance_account_flag "Sub 02" &
 tail -f nohup.out
 
 
@@ -47,7 +65,7 @@ tail -f nohup.out
 
 Notes:-
 
-- Make sure 'Futures' is in the name of the account or use --binance_account_flag to specify part of name
+- Make sure run_config.py has your 3commas names for accounts, --binance_account_flag to specify part of name that uniqly identifies the account
 
 - Add 'do not start' to the name of the bots you do not want to start automatically
 
@@ -59,40 +77,15 @@ Notes:-
 
 ToDo:-
 
-- deal with connection reset errors
-    - wait for a bit and try again
-    - ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
+- if error and +ve profit, sell at market (not currently working)
 
-- Fix potential None to float errors in reports
-    - float() argument must be a string or a number, not 'NoneType'
-
-
-- make deal line COLOR when %profit +/-
-
-- move functions to utils
-    - fix color issue in utils.py
-
-- Need to consider multiplier when starting/stopping bots an counting them, not just for positions as now ???
-
-- create files to dump all pairs in all futures accounts sorted by best to worst
+- Need to consider multiplier when starting/stopping bots an counting them, not just for positions as now
 
 - generate stats on deals history per pair (how much, multiplier, how long, add short and long, $/hr, etc)
 
-- Merge deals and positions view and show if any deltas
-
 - Add notification through email or Google Home? (IFTTT is done for MR >= critical)
 
-- Add script to create bots from existing one (not simple!!!)
-    - ask to select account
-    - ask for pair (to upper)
-    - confirm before creation
-    - create short and long
-
-- Allow hardcoded Generate list of pairs sorted by how good they have been (or user input pairs)
-
-
-
-XYZ:-
+- Allow hardcoded Generate list of pairs sorted by first to start.
 
 
 '''
@@ -105,7 +98,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--dry", help='Dry run, do not start/stop bots', action='store_true', default=None)
 parser.add_argument("--auto", help='Auto Stop/Start bots based on Margin Ratio', action='store_true', default=None)
 parser.add_argument("--stop_at", help='Stop bots when Margin Ratio >= value', type=float, default=2.5)
-parser.add_argument("--start_at", help='Start bots when Margin Ratio <= value', type=float, default=1.5)
+parser.add_argument("--start_at", help='Start bots when Margin Ratio <= value', type=float, default=1.5) # not really used currently
 parser.add_argument("--bot_start_bursts", help='Number of bots to start each time', type=int, default=3)
 parser.add_argument("--bots_per_position_ratio", help='Open a max number of bots ratio for each needed position', type=int, default=3)
 parser.add_argument("--binance_account_flag", help='Part of binance account name identifier', default="Main")
@@ -164,7 +157,7 @@ except Exception:
 #----------------------------------
 #----------------------------------
 #----------------------------------
-@timeout(30)
+@timeout(100)
 def run_account(account_id, api_key, api_secret):
 
     account=getBinanceAPI(api_key, api_secret).futuresAccount()
@@ -242,7 +235,7 @@ def run_account(account_id, api_key, api_secret):
             print(f"Total Margin Balance = ${totalMarginBalance:<.2f} (${totalMaintMargin:<.2f})")
             print(f"Bots Active/Total: {active_bot_pair_count}/{total_bot_pair_count}")
             stopped_bots_count = total_bot_pair_count - active_bot_pair_count
-            position_delta_factor = (margin_ratio/args.stop_at - margin_ratio/args.start_at) * max_bot_pairs                
+            position_delta_factor = (margin_ratio/args.stop_at - margin_ratio/args.start_at) * max_bot_pairs
             position_delta_factor = round(position_delta_factor) if position_delta_factor > 0 else 0
             bots_pairs_to_start = round(max_bot_pairs - position_delta_factor - active_positions_count)
             print(f"Positions delta ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - MR factor ({position_delta_factor}) - running ({active_positions_count})")
