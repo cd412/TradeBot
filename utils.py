@@ -6,6 +6,8 @@ import time
 import run_config
 from datetime import datetime
 from time import gmtime, strftime
+from random import shuffle
+
 
 
 #----------------------------------
@@ -247,6 +249,20 @@ def get_stopped_bots_without_positions(bots, account_id, positions):
                 bot_l.append(''.join(bot['pairs']).replace('USDT_',''))
     return bot_l
 
+# Random stopped bots without positions
+def get_stopped_bots_without_positions_random(bots, account_id, positions):
+    positions_l = []
+    for position in sorted(positions, key=lambda k: (k['symbol'])):
+        if float(position['positionAmt']) != 0.0:
+            positions_l.append(position['symbol'].replace('USDT',''))
+
+    bot_l = []
+    for bot in shuffle(bots):
+        if account_id == bot['account_id'] and bot['strategy'] == "long" and not bot['is_enabled'] and 'do not start' not in bot['name']:
+            if ''.join(bot['pairs']).replace('USDT_','') not in positions_l:
+                bot_l.append(''.join(bot['pairs']).replace('USDT_',''))
+    return bot_l
+
 
 # get count of stopped bots without active positions
 def get_count_of_stopped_bots_without_positions(bots, account_id, positions):
@@ -424,6 +440,8 @@ def show_deals_positions(deals, positions, colors):
         #    txt += f"{ad}\n"
     
     
+        updated_at_ts = datetime.strptime(ad['updated_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
+        updated_at_ts_diff = ts - updated_at_ts
         created_at_ts = datetime.strptime(ad['created_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
         created_at_ts_diff = ts - created_at_ts
         #pprint(ad)
@@ -469,7 +487,7 @@ def show_deals_positions(deals, positions, colors):
             color = RED
         elif xfloat(ad['actual_profit_percentage']) < 0.0:
             color = YELLOW
-        if xfloat(ad['actual_profit_percentage']) >= 0.42:
+        if xfloat(ad['actual_profit_percentage']) >= xfloat(ad['take_profit']):
             color = BLUE
         elif xfloat(ad['actual_profit_percentage']) > 0.0:
             color = GREEN
@@ -485,11 +503,11 @@ def show_deals_positions(deals, positions, colors):
                 #txt += "********* DRY No-Op*********\n"
                 panicSell = get3CommasAPI().panicSellDeal(DEAL_ID=f"{ad['id']}")
                 txt += f"{panicSell}\n"
-                #beep(beep_time)
+                beep(3)
             else:
                 txt += f"{RED}Detected -ve profit ({xfloat(ad['actual_profit_percentage']):0.2f}%) in deal ID {ad['id']}{ENDC}\n"
                 txt += f"{RED}********* Manual action needed *********{ENDC}\n"
-                #beep(beep_time)
+                beep(3)
         #elif ad['current_active_safety_orders_count'] == 0:
         #    txt += "Detected zero active SO count...\n"
         #    txt += f"{ad}\n" ### Testing to see if we can identify if this is an issue or not...
