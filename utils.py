@@ -12,7 +12,7 @@ from random import shuffle
 
 #----------------------------------
 
-beep_time = 30
+beep_time = 2
 
 #----------------------------------
 
@@ -129,12 +129,15 @@ def list_bot_pairs(bots, account_id, strategy = "long"):
 def get_bot_pair_count(bots, account_id):
     a_count = 0
     count = 0
+    dns_count = 0
     for bot in bots:
         if account_id == bot['account_id'] and bot['strategy'] == 'long':
             count += 1
             if bot['is_enabled']:
                 a_count += 1
-    return count, a_count
+            if 'do not start' in bot['name']:
+                dns_count += 1
+    return count, a_count, dns_count
 
 
 def stop_all_bots(bots, account_id, dry):

@@ -77,6 +77,7 @@ Notes:-
 
 ToDo:-
 - make bots_per_position_ratio dynamic based on how many positions needed...
+    - delta/target * bots_per_position_ratio
 
 - Detect if deals have more than one of the same pair (S/L)
 
@@ -130,7 +131,7 @@ if args.start_at >= args.stop_at:
 
 #----------------------------------
 
-beep_time = 30
+beep_time = 2
 if args.colors:
     ENDC   = '\033[0m'
     RED    = '\033[91m'
@@ -221,6 +222,20 @@ def run_account(account_id, api_key, api_secret):
     #print("--------------------")
 
     if args.auto:
+        top_stopped_pairs = get_top_stopped_pairs(bots, account_id)
+        totalMarginBalance = get_totalMarginBalance(account)
+        totalMaintMargin = get_totalMaintMargin(account)
+        max_bot_pairs = get_max_bot_pairs(totalMarginBalance, args.pair_allowance)
+        active_positions_count = get_active_positions_count(account['positions'], bots)
+        total_bot_pair_count, active_bot_pair_count, dns_bot_pair_count = get_bot_pair_count(bots, account_id)
+
+        print(f"Total Margin Balance = ${totalMarginBalance:<.2f} (${totalMaintMargin:<.2f})")
+        print(f"Bots Active/Total: {active_bot_pair_count}/{total_bot_pair_count} (-{dns_bot_pair_count})")
+        stopped_bots_count = total_bot_pair_count - active_bot_pair_count
+        position_delta_factor = (margin_ratio/args.stop_at - margin_ratio/args.start_at) * max_bot_pairs
+        position_delta_factor = round(position_delta_factor) if position_delta_factor > 0 else 0
+        bots_pairs_to_start = round(max_bot_pairs - position_delta_factor - active_positions_count)
+        print(f"Positions delta ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - MR factor ({position_delta_factor}) - running ({active_positions_count})")
         if margin_ratio >= args.stop_at:
             print(f"{RED}Hight margin_ratio, stopping bots...{ENDC}")
             stop_all_bots(bots, account_id, args.dry)
@@ -229,21 +244,6 @@ def run_account(account_id, api_key, api_secret):
                 ifttt_contents = urllib.request.urlopen(run_config.ifttt_url).read()
                 print(ifttt_contents)
         else:
-            top_stopped_pairs = get_top_stopped_pairs(bots, account_id)
-            totalMarginBalance = get_totalMarginBalance(account)
-            totalMaintMargin = get_totalMaintMargin(account)
-            max_bot_pairs = get_max_bot_pairs(totalMarginBalance, args.pair_allowance)
-            active_positions_count = get_active_positions_count(account['positions'], bots)
-            total_bot_pair_count, active_bot_pair_count = get_bot_pair_count(bots, account_id)
-
-            print(f"Total Margin Balance = ${totalMarginBalance:<.2f} (${totalMaintMargin:<.2f})")
-            print(f"Bots Active/Total: {active_bot_pair_count}/{total_bot_pair_count}")
-            stopped_bots_count = total_bot_pair_count - active_bot_pair_count
-            position_delta_factor = (margin_ratio/args.stop_at - margin_ratio/args.start_at) * max_bot_pairs
-            position_delta_factor = round(position_delta_factor) if position_delta_factor > 0 else 0
-            bots_pairs_to_start = round(max_bot_pairs - position_delta_factor - active_positions_count)
-            print(f"Positions delta ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - MR factor ({position_delta_factor}) - running ({active_positions_count})")
-
             if bots_pairs_to_start > 0 and not args.no_start: # need more positions
                 if margin_ratio < args.start_at:
                     if len(top_stopped_pairs) > 0:
@@ -254,7 +254,9 @@ def run_account(account_id, api_key, api_secret):
                                 print(f"Starting {bot_to_start} bot pairs...")
                                 start_bot_pair(bots, account_id, bot_to_start, args.dry)
                         else: # no stopped bots with positions to start, start from ones without active positions
-                            max_bots_running = bots_pairs_to_start * args.bots_per_position_ratio
+                            dynamic_bots_per_position_ratio = round((bots_pairs_to_start/max_bot_pairs) * args.bots_per_position_ratio) + 1
+                            #print(f"dynamic_bots_per_position_ratio = {dynamic_bots_per_position_ratio}")
+                            max_bots_running = bots_pairs_to_start * dynamic_bots_per_position_ratio
                             print (f"Need to start a max of {max_bots_running} stopped bot pairs...")
 
                             count_of_started_bots_without_positions = get_count_of_started_bots_without_positions(bots, account_id, account['positions'])
@@ -288,6 +290,11 @@ def run_account(account_id, api_key, api_secret):
                         stop_bot_pair(bots, account_id, bot_to_stop, args.dry)
             else: # the right ammount of positions running
                 print("No change to positions count needed...")
+                started_bots_without_positions = get_started_bots_without_positions(bots, account_id, account['positions'])
+                print(f"Correct positions count, stopping {len(started_bots_without_positions)} bots without positions")
+                for bot_to_stop in started_bots_without_positions:
+                    print(f"Stopping {bot_to_stop} bot pairs...")
+                    stop_bot_pair(bots, account_id, bot_to_stop, args.dry)
 
     if args.beep and margin_ratio >= args.stop_at:
         beep(beep_time)
