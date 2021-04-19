@@ -257,7 +257,8 @@ def get_stopped_bots_without_positions_random(bots, account_id, positions):
             positions_l.append(position['symbol'].replace('USDT',''))
 
     bot_l = []
-    for bot in shuffle(bots):
+    shuffle(bots)
+    for bot in bots:
         if account_id == bot['account_id'] and bot['strategy'] == "long" and not bot['is_enabled'] and 'do not start' not in bot['name']:
             if ''.join(bot['pairs']).replace('USDT_','') not in positions_l:
                 bot_l.append(''.join(bot['pairs']).replace('USDT_',''))

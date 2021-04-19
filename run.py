@@ -47,17 +47,17 @@ time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2
 Actual:
 
 cd ~/Downloads/3CommasAPI/
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 60 --pair_allowance 250 --binance_account_flag "Main"
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 60 --pair_allowance 500 --binance_account_flag "Main"
 
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 65 --pair_allowance 250 --binance_account_flag "Sub 01"
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 65 --pair_allowance 500 --binance_account_flag "Sub 01"
 
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 70 --pair_allowance 250 --binance_account_flag "Sub 02"
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 70 --pair_allowance 500 --binance_account_flag "Sub 02"
 
 
 - On a 2 seperate machines, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
-nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.5 --keep_running_timer 1800 --safe --binance_account_flag "Main" &
-nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.5 --keep_running_timer 1800 --safe --binance_account_flag "Sub 01" &
-nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.5 --keep_running_timer 1800 --safe --binance_account_flag "Sub 02" &
+nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.5 --keep_running_timer 1800 --no_start --binance_account_flag "Main" &
+nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.5 --keep_running_timer 1800 --no_start --binance_account_flag "Sub 01" &
+nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.5 --keep_running_timer 1800 --no_start --binance_account_flag "Sub 02" &
 tail -f nohup.out
 
 
@@ -76,6 +76,8 @@ Notes:-
 
 
 ToDo:-
+- make bots_per_position_ratio dynamic based on how many positions needed...
+
 - Detect if deals have more than one of the same pair (S/L)
 
 - if error and +ve profit, sell at market (not currently working)
@@ -117,7 +119,7 @@ parser.add_argument("--colors", help='Add colors if system supports it', action=
 #parser.add_argument("--pairs", help="A list of pairs ordered from best down, e.g. --pairs EOS ENJ AXS", nargs='+', default=None)
 parser.add_argument("--keep_running", help='Loop forever (Ctrl+c to stop)', action='store_true', default=None)
 parser.add_argument("--keep_running_timer", help='Time to sleep between runs in seconds (default 60)', type=int, default=60)
-parser.add_argument("--safe", help='Run in safe mode (as a backup) with different values to make sure to stop (and not start) bots', action='store_true', default=None)
+parser.add_argument("--no_start", help='Run in safe mode (as a backup) with different values to make sure to stop (and not start) bots', action='store_true', default=None)
 parser.add_argument("--debug", help='debug', action='store_true', default=None)
 
 args = parser.parse_args()
@@ -242,7 +244,7 @@ def run_account(account_id, api_key, api_secret):
             bots_pairs_to_start = round(max_bot_pairs - position_delta_factor - active_positions_count)
             print(f"Positions delta ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - MR factor ({position_delta_factor}) - running ({active_positions_count})")
 
-            if bots_pairs_to_start > 0 and not args.safe: # need more positions
+            if bots_pairs_to_start > 0 and not args.no_start: # need more positions
                 if margin_ratio < args.start_at:
                     if len(top_stopped_pairs) > 0:
                         stopped_bots_with_positions = get_stopped_bots_with_positions(bots, account_id, account['positions'])
@@ -275,7 +277,7 @@ def run_account(account_id, api_key, api_secret):
                     print(f"{YELLOW}Hight margin_ratio, not starting any bots...{ENDC}")
 
             elif bots_pairs_to_start < 0: # running too much positions
-                if args.safe:
+                if args.no_start:
                     print("Hight positions count, stopping all running bots...")
                     stop_all_bots(bots, account_id, args.dry)
                 else:
@@ -347,6 +349,7 @@ if args.keep_running:
             print("*************************")
         sys.stdout.flush()
         countdown(keep_running_timer)
+        print()
         print ("-----------------------------------------------------------------")
 else:
     print (account_txt)
