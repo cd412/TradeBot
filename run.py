@@ -248,39 +248,40 @@ def run_account(account_id, api_key, api_secret):
                 ifttt_contents = urllib.request.urlopen(run_config.ifttt_url).read()
                 print(ifttt_contents)
         else:
-            if bots_pairs_to_start > 0 and not args.no_start: # need more positions
-                if margin_ratio < args.start_at:
-                    if len(top_stopped_pairs) > 0:
-                        stopped_bots_with_positions = get_stopped_bots_with_positions(bots, account_id, account['positions'])
-                        if len(stopped_bots_with_positions) > 0:
-                            print(f"Starting {len(stopped_bots_with_positions)} stopped bots with active positions...")
-                            for bot_to_start in stopped_bots_with_positions:
-                                print(f"Starting {bot_to_start} bot pairs...")
-                                start_bot_pair(bots, account_id, bot_to_start, args.dry)
-                        else: # no stopped bots with positions to start, start from ones without active positions
-                            dynamic_bots_per_position_ratio = round((bots_pairs_to_start/max_bot_pairs) * args.bots_per_position_ratio) + 1
-                            #print(f"dynamic_bots_per_position_ratio = {dynamic_bots_per_position_ratio}")
-                            max_bots_running = bots_pairs_to_start * dynamic_bots_per_position_ratio
-                            print (f"Need to start a max of {max_bots_running} stopped bot pairs...")
+            if bots_pairs_to_start > 0: # need more positions
+                if not args.no_start:
+                    if margin_ratio < args.start_at:
+                        if len(top_stopped_pairs) > 0:
+                            stopped_bots_with_positions = get_stopped_bots_with_positions(bots, account_id, account['positions'])
+                            if len(stopped_bots_with_positions) > 0:
+                                print(f"Starting {len(stopped_bots_with_positions)} stopped bots with active positions...")
+                                for bot_to_start in stopped_bots_with_positions:
+                                    print(f"Starting {bot_to_start} bot pairs...")
+                                    start_bot_pair(bots, account_id, bot_to_start, args.dry)
+                            else: # no stopped bots with positions to start, start from ones without active positions
+                                dynamic_bots_per_position_ratio = round((bots_pairs_to_start/max_bot_pairs) * args.bots_per_position_ratio) + 1
+                                #print(f"dynamic_bots_per_position_ratio = {dynamic_bots_per_position_ratio}")
+                                max_bots_running = bots_pairs_to_start * dynamic_bots_per_position_ratio
+                                print (f"Need to start a max of {max_bots_running} stopped bot pairs...")
 
-                            count_of_started_bots_without_positions = get_count_of_started_bots_without_positions(bots, account_id, account['positions'])
-                            max_bots_running = max_bots_running - count_of_started_bots_without_positions
-                            if args.randomize_bots:
-                                stopped_bots_without_positions = get_stopped_bots_without_positions_random(bots, account_id, account['positions'])
-                            else:
-                                stopped_bots_without_positions = get_stopped_bots_without_positions(bots, account_id, account['positions'])
-                            actual_bots_to_start = min(max_bots_running, args.bot_start_bursts, len(stopped_bots_without_positions), max_bots_running)
-                            actual_bots_to_start = 0 if actual_bots_to_start <= 0 else actual_bots_to_start # Make sure it's not a negative number
+                                count_of_started_bots_without_positions = get_count_of_started_bots_without_positions(bots, account_id, account['positions'])
+                                max_bots_running = max_bots_running - count_of_started_bots_without_positions
+                                if args.randomize_bots:
+                                    stopped_bots_without_positions = get_stopped_bots_without_positions_random(bots, account_id, account['positions'])
+                                else:
+                                    stopped_bots_without_positions = get_stopped_bots_without_positions(bots, account_id, account['positions'])
+                                actual_bots_to_start = min(max_bots_running, args.bot_start_bursts, len(stopped_bots_without_positions), max_bots_running)
+                                actual_bots_to_start = 0 if actual_bots_to_start <= 0 else actual_bots_to_start # Make sure it's not a negative number
 
-                            print (f"Incrementally starting {actual_bots_to_start} stopped bots without positions...")
-                            burst_pairs_to_start = stopped_bots_without_positions[:actual_bots_to_start] # Assume list is sorted
-                            for bot_to_start in burst_pairs_to_start:
-                                print(f"Starting {bot_to_start} bot pairs...")
-                                start_bot_pair(bots, account_id, bot_to_start, args.dry)
+                                print (f"Incrementally starting {actual_bots_to_start} stopped bots without positions...")
+                                burst_pairs_to_start = stopped_bots_without_positions[:actual_bots_to_start] # Assume list is sorted
+                                for bot_to_start in burst_pairs_to_start:
+                                    print(f"Starting {bot_to_start} bot pairs...")
+                                    start_bot_pair(bots, account_id, bot_to_start, args.dry)
+                        else:
+                            print("No stopped bots to start...")
                     else:
-                        print("No stopped bots to start...")
-                else:
-                    print(f"{YELLOW}Hight margin_ratio, not starting any bots...{ENDC}")
+                        print(f"{YELLOW}Hight margin_ratio, not starting any bots...{ENDC}")
 
             elif bots_pairs_to_start < 0: # running too much positions
                 if args.no_start:
