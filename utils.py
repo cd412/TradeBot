@@ -16,6 +16,17 @@ beep_time = 2
 
 #----------------------------------
 
+def timing(f):
+    def wrap(*args, **kwargs):
+        time1 = time.time()
+        ret = f(*args, **kwargs)
+        time2 = time.time()
+        print('{:s} function took {:.3f} ms'.format(f.__name__, (time2-time1)*1000.0))
+
+        return ret
+    return wrap
+
+#@timing
 def getBinanceAPI(key, secret):
     api = Binance(
         API_KEY=key,
@@ -23,7 +34,7 @@ def getBinanceAPI(key, secret):
     )
     return api
 
-
+#@timing
 def get3CommasAPI():
     api = API3Commas(
         API_KEY=run_config.TCommas_API_KEY,
@@ -314,6 +325,7 @@ def get_started_bots_without_positions(bots, account_id, positions):
 
 
 # return FIRST matching accountID
+#@timing
 def getAccountID(binance_account_flag):
     accounts=get3CommasAPI().getAccounts()
     for account in accounts:
@@ -388,8 +400,8 @@ def show_deals(deals):
 
 
 
-
-def show_deals_positions(deals, positions, colors):
+#@timing
+def show_deals_positions(deals, positions, colors = True, unicode = True):
 
     if colors:
         ENDC   = '\033[0m'
@@ -407,6 +419,13 @@ def show_deals_positions(deals, positions, colors):
         BLINK  = ''
         BOLD   = ''
         BLUE   = ''
+
+    if unicode:
+        UP   = ''
+        DOWN = ''
+    else:
+        UP   = ''
+        DOWN = ''
 
     # Get field from structure
     def gf(data, field):
@@ -429,6 +448,8 @@ def show_deals_positions(deals, positions, colors):
         return cost, max_cost
 
 
+    deal_position_list = []
+    deal_position = {}
     ts = datetime.utcnow()
     ts_txt = ts.strftime('%Y-%m-%dT%H:%M:%SZ')
     total_bought_volume = 0.0
@@ -442,6 +463,7 @@ def show_deals_positions(deals, positions, colors):
     
         #if 'BAL' in ad['pair'].replace('USDT_',''):
         #    txt += f"{ad}\n"
+        #pprint(ad)
     
     
         updated_at_ts = datetime.strptime(ad['updated_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
@@ -450,11 +472,17 @@ def show_deals_positions(deals, positions, colors):
         created_at_ts_diff = ts - created_at_ts
         #pprint(ad)
         #exit()  take_profit_price current_price
+        deal_position = {**ad}
         position_txt = ""
         for position in sorted(positions, key=lambda k: (k['symbol'])):
             if ad['pair'].replace('USDT_','') == position['symbol'].replace('USDT',''):
                 if xfloat(position['positionAmt']) != 0.0:
                     position_txt = f"{position['positionAmt']:5} {position['entryPrice']:10}"
+                    position['positionLeverage'] = position['leverage']
+                    deal_position = {**ad, **position}
+                    #pprint(position)
+
+        deal_position['notes'] = ''
 
         error_message = f"{RED}{xstr(ad['error_message'])}{xstr(ad['failed_message'])}{ENDC}"
         if position_txt == "":
@@ -473,6 +501,9 @@ def show_deals_positions(deals, positions, colors):
 
         actual_usd_profit = xfloat(ad['actual_usd_profit'])
         reserved_cost, max_reserved_cost = get_deal_cost_reserved(ad)
+        deal_position['reserved_cost'] = reserved_cost
+        deal_position['max_reserved_cost'] = max_reserved_cost
+        
         
         age_d = created_at_ts_diff.days
         age_d_str = str(age_d).rjust(2, '0')+' ' if age_d > 0 else '   '
@@ -481,20 +512,29 @@ def show_deals_positions(deals, positions, colors):
         age_m = int(((created_at_ts_diff.total_seconds()/3600) - int(created_at_ts_diff.total_seconds()/3600))*60)
         age_m_str = str(age_m).rjust(2, '0')# if age_m > 0 else '  '
         age = f"{age_d_str:3}{age_h_str:3}{age_m_str:2}"
+        deal_position['create_age_txt'] = age
+        deal_position['create_age'] = created_at_ts_diff.total_seconds()
+        deal_position['update_age'] = updated_at_ts_diff.total_seconds()        
 
         color = ''
         if xfloat(ad['actual_profit_percentage']) < -10.0:
             color = RED + BLINK + BOLD
+            deal_position['color'] = RED + BLINK + BOLD
         elif xfloat(ad['actual_profit_percentage']) < -5.0:
             color = RED + BOLD
+            deal_position['color'] = RED + BOLD
         elif xfloat(ad['actual_profit_percentage']) < -2.0:
             color = RED
+            deal_position['color'] = RED
         elif xfloat(ad['actual_profit_percentage']) < 0.0:
             color = YELLOW
+            deal_position['color'] = YELLOW
         if xfloat(ad['actual_profit_percentage']) >= xfloat(ad['take_profit']):
             color = BLUE
+            deal_position['color'] = BLUE
         elif xfloat(ad['actual_profit_percentage']) > 0.0:
             color = GREEN
+            deal_position['color'] = GREEN
         txt += f"{color}{ad['pair'].replace('USDT_',''):6} {xfloat(ad['actual_profit_percentage']):6.2f}% {position_txt} c{ad['completed_safety_orders_count']} a{ad['current_active_safety_orders_count']} m{ad['max_safety_orders']} ${xfloat(ad['bought_volume']):7.2f} ${reserved_cost:7.2f} ${xfloat(ad['current_price']):6.2f} ${xfloat(ad['take_profit_price']):6.2f} {age} {a_flag}{error_message}{ENDC}\n"
 
 
@@ -506,7 +546,8 @@ def show_deals_positions(deals, positions, colors):
                 txt += f"{YELLOW}Panic Selling deal ID {ad['id']} at {xfloat(ad['actual_profit_percentage']):0.2f}%{ENDC}\n"
                 #txt += "********* DRY No-Op*********\n"
                 panicSell = get3CommasAPI().panicSellDeal(DEAL_ID=f"{ad['id']}")
-                txt += f"{panicSell}\n"
+                print(panicSell)
+                #txt += f"{panicSell}\n"
                 beep(3)
             else:
                 txt += f"{RED}Detected -ve profit ({xfloat(ad['actual_profit_percentage']):0.2f}%) in deal ID {ad['id']}{ENDC}\n"
@@ -515,6 +556,48 @@ def show_deals_positions(deals, positions, colors):
         #elif ad['current_active_safety_orders_count'] == 0:
         #    txt += "Detected zero active SO count...\n"
         #    txt += f"{ad}\n" ### Testing to see if we can identify if this is an issue or not...
+
+
+
+
+
+        '''
+ICX     -1.02% 58    2.2131     c3 a0 m11 $ 128.41 $   0.00 $  2.19 $  2.22       38 
+    ***SO***
+    
+        c{ad['completed_safety_orders_count']} 
+        a{ad['current_active_safety_orders_count']} 
+        m{ad['max_safety_orders']}
+    
+        '''
+
+        if deal_position['error_message'] or deal_position['failed_message']:
+            deal_position['notes'] += f"{xstr(deal_position['error_message'])} {xstr(deal_position['failed_message'])}"
+        if deal_position['current_active_safety_orders_count'] == 0:
+            if deal_position['completed_safety_orders_count'] == deal_position['max_safety_orders']:
+                deal_position['notes'] += ' *** Reached max SOs ***'
+            else: #if deal_position['completed_safety_orders_count'] == 0:
+                if deal_position['completed_safety_orders_count'] == 0:
+                    if deal_position['create_age'] <= 60:
+                        deal_position['notes'] += ' Opening deal'
+                    else:
+                        if xfloat(deal_position['actual_profit_percentage']) >= xfloat(deal_position['take_profit']):
+                            deal_position['notes'] += ' *** TTP ***'
+                        else:
+                            deal_position['notes'] += ' ???'
+                else:
+                    if deal_position['update_age'] <= 60:
+                        deal_position['notes'] += ' Updating deal'
+                    else:
+                        if xfloat(deal_position['actual_profit_percentage']) >= xfloat(deal_position['take_profit']):
+                            deal_position['notes'] += ' *** TTP ***'
+                        else:
+                            deal_position['notes'] += ' *** Missing SO ***'
+
+        if deal_position['notes'] != '':
+            txt += f"{deal_position['notes']}\n"
+
+
 
 
         total_bought_volume += xfloat(ad['bought_volume'])
@@ -527,10 +610,20 @@ def show_deals_positions(deals, positions, colors):
                 if ad['pair'].replace('USDT_','') == position['symbol'].replace('USDT',''):
                     found_position_without_deal = True
             if not found_position_without_deal:
-                txt += f"{position['symbol'].replace('USDT',''):6} {position['positionAmt']:5} {position['entryPrice']:10} {RED}No Deal for position found{ENDC}\n"
+                txt += f"{position['symbol'].replace('USDT',''):6} {'':7} {position['positionAmt']:5} {position['entryPrice']:10} {RED}No Deal for position found{ENDC}\n"
+                position['positionLeverage'] = position['leverage']
+                deal_position = {**position}
+                deal_position['error_message'] = 'No Deal for position found'
+                deal_position['color'] = RED
+                # Check how old updateTime was
+                deal_position['notes'] = 'No Deal for position found'
+
+                if deal_position['notes'] and deal_position['notes'] != '':
+                    txt += f"{deal_position['notes']}\n"
 
 
-
+    deal_position_list.append(deal_position.copy())
+    #pprint(deal_position_list)
     txt += f"{'':41} ${total_bought_volume:7.2f} ${total_deals_cost_reserved:7.2f}"
     return txt
 

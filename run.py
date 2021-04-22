@@ -47,12 +47,15 @@ time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2
 Actual:
 
 cd ~/Downloads/3CommasAPI/
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 60 --pair_allowance 500 --binance_account_flag "Main"
+x time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 60 --pair_allowance 500 --binance_account_flag "Main"
+x time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 65 --pair_allowance 500 --binance_account_flag "Sub 01"
+x time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 70 --pair_allowance 500 --binance_account_flag "Sub 02"
 
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 65 --pair_allowance 500 --binance_account_flag "Sub 01"
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 1 --start_at 0.75 --bot_start_bursts 2 --bots_per_position_ratio 3 --keep_running_timer 65 --pair_allowance 375 --binance_account_flag "Main"
 
-time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 2 --bot_start_bursts 3 --bots_per_position_ratio 3 --keep_running_timer 70 --pair_allowance 500 --binance_account_flag "Sub 02"
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 1 --start_at 0.75 --bot_start_bursts 2 --bots_per_position_ratio 3 --keep_running_timer 65 --pair_allowance 375 --binance_account_flag "Sub 01"
 
+time python3 run.py --show_all --beep --colors --auto --keep_running --stop_at 1 --start_at 0.75 --bot_start_bursts 2 --bots_per_position_ratio 3 --keep_running_timer 65 --pair_allowance 375 --binance_account_flag "Sub 02" --randomize_bots
 
 - On a 2 seperate machines, run safe mode in case main one gets killed so this one can stop all bots if things go wrong:
 nohup python3 run.py --colors --auto --pair_allowance 240 --keep_running --stop_at 2.5 --keep_running_timer 1800 --no_start --binance_account_flag "Main" &
@@ -197,7 +200,8 @@ def run_account(account_id, api_key, api_secret):
         try:
             deals=get3CommasAPI().getDeals(OPTIONS=f"?account_id={account_id}&scope=active&limit=100")
             show_deals_positions_txt = show_deals_positions(deals, account['positions'], args.colors)
-            print(show_deals_positions(deals, account['positions'], args.colors))
+            #print(show_deals_positions(deals, account['positions'], args.colors))
+            print(show_deals_positions_txt)
             if "Error" in show_deals_positions_txt:
                 beep(5)
                 #if do_ifttt:
