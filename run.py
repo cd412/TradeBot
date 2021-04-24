@@ -312,7 +312,11 @@ def run_account(account_id, api_key, api_secret):
 #----------------------------------
 #----------------------------------
 
-signal.signal(signal.SIGINT, signal_handler)
+try:
+    _ = signal.SIGALRM
+    signal.signal(signal.SIGINT, signal_handler)
+except:
+    pass
 
 print ("-----------------------------------------------------------------")
 print ("-----------------------------------------------------------------")
