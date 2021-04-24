@@ -11,8 +11,12 @@ import time
 import run_config
 from datetime import datetime
 from time import gmtime, strftime
-#import signal
-from timeout import timeout
+import signal
+import os
+if os.name == 'nt':
+    from timeout_win import timeout
+else:
+    from timeout import timeout
 
 #----------------------------------
 '''
@@ -311,13 +315,9 @@ def run_account(account_id, api_key, api_secret):
 #----------------------------------
 #----------------------------------
 #----------------------------------
-'''
-try:
-    _ = signal.SIGALRM
-    signal.signal(signal.SIGINT, signal_handler)
-except:
-    pass
-'''
+
+signal.signal(signal.SIGINT, signal_handler)
+
 print ("-----------------------------------------------------------------")
 print ("-----------------------------------------------------------------")
 
