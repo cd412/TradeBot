@@ -309,6 +309,8 @@ def run_account(account_id, api_key, api_secret):
                                             stop_bot_pair(bots, account_id, bot_to_stop, args.dry)
                                     else:
                                         print("nothing to stop")
+                                elif active_bot_pair_count == max_bots_running:
+                                    print ("No change to number of bots running needed...")
                                 else:
 
                                     #count_of_started_bots_without_positions = len(started_bots_without_positions)
