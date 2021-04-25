@@ -309,6 +309,7 @@ def get_count_of_started_bots_without_positions(bots, account_id, positions):
     return count
 
 
+
 # get a list of started bots without active positions
 def get_started_bots_without_positions(bots, account_id, positions):
     positions_l = []
@@ -594,8 +595,10 @@ ICX     -1.02% 58    2.2131     c3 a0 m11 $ 128.41 $   0.00 $  2.19 $  2.22     
                         else:
                             deal_position['notes'] += ' *** Missing SO ***'
 
-        if deal_position['notes'] != '':
-            txt += f"{deal_position['notes']}\n"
+
+        # For debugging new structure...
+        #if deal_position['notes'] != '':
+        #    txt += f"{deal_position['notes']}\n"
 
 
 
