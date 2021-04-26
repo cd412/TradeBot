@@ -279,12 +279,12 @@ def run_account(account_id, api_key, api_secret):
                             if len(stopped_bots_with_positions) > 0:
                                 print(f"Starting {len(stopped_bots_with_positions)} stopped bots with active positions...")
                                 if margin_ratio < args.start_at:
-                                    print(f"{YELLOW}Hight margin_ratio, not starting any bots...{ENDC}")
-                                else:
                                     if not args.no_start:
                                         for bot_to_start in stopped_bots_with_positions:
                                             print(f"Starting {bot_to_start} bot pairs...")
                                             start_bot_pair(bots, account_id, bot_to_start, args.dry)
+                                else:
+                                    print(f"{YELLOW}Hight margin_ratio, not starting any bots...{ENDC}")
                             else: # no stopped bots with positions to start, start from ones without active positions
                                 #dynamic_bots_per_position_ratio = round((bots_pairs_to_start/max_bot_pairs) * args.bots_per_position_ratio) + 1
                                 #print(f"dynamic_bots_per_position_ratio = {dynamic_bots_per_position_ratio}")
@@ -328,13 +328,13 @@ def run_account(account_id, api_key, api_secret):
 
                                     if not args.no_start:
                                         if margin_ratio < args.start_at:
-                                            print(f"{YELLOW}Hight margin_ratio, not starting any bots...{ENDC}")
-                                        else:
                                             print (f"Incrementally starting {actual_bots_to_start} stopped bots without positions...")
                                             burst_pairs_to_start = stopped_bots_without_positions[:actual_bots_to_start] # Assume list is sorted
                                             for bot_to_start in burst_pairs_to_start:
                                                 print(f"Starting {bot_to_start} bot pairs...")
                                                 start_bot_pair(bots, account_id, bot_to_start, args.dry)
+                                        else:
+                                            print(f"{YELLOW}Hight margin_ratio, not starting any bots...{ENDC}")
                         #else:
                         #    print("No stopped bots to start...")
                     #else:
