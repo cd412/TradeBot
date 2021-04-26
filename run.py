@@ -84,6 +84,7 @@ Notes:-
 
 ToDo:-
 
+- Consider converting it into a webservice...
 
 - allow to select fields to show in deals/positions, use current as default
 
@@ -272,15 +273,18 @@ def run_account(account_id, api_key, api_secret):
         else:
             if bots_pairs_to_start > 0: # need more positions
                 #if not args.no_start:
-                    if margin_ratio < args.start_at:
+                    #if margin_ratio < args.start_at:
                         #if len(top_stopped_pairs) > 0:
                             stopped_bots_with_positions = get_stopped_bots_with_positions(bots, account_id, account['positions'])
                             if len(stopped_bots_with_positions) > 0:
                                 print(f"Starting {len(stopped_bots_with_positions)} stopped bots with active positions...")
-                                if not args.no_start:
-                                    for bot_to_start in stopped_bots_with_positions:
-                                        print(f"Starting {bot_to_start} bot pairs...")
-                                        start_bot_pair(bots, account_id, bot_to_start, args.dry)
+                                if margin_ratio < args.start_at:
+                                    print(f"{YELLOW}Hight margin_ratio, not starting any bots...{ENDC}")
+                                else:
+                                    if not args.no_start:
+                                        for bot_to_start in stopped_bots_with_positions:
+                                            print(f"Starting {bot_to_start} bot pairs...")
+                                            start_bot_pair(bots, account_id, bot_to_start, args.dry)
                             else: # no stopped bots with positions to start, start from ones without active positions
                                 #dynamic_bots_per_position_ratio = round((bots_pairs_to_start/max_bot_pairs) * args.bots_per_position_ratio) + 1
                                 #print(f"dynamic_bots_per_position_ratio = {dynamic_bots_per_position_ratio}")
@@ -323,15 +327,18 @@ def run_account(account_id, api_key, api_secret):
                                     actual_bots_to_start = 0 if actual_bots_to_start <= 0 else actual_bots_to_start # Make sure it's not a negative number
 
                                     if not args.no_start:
-                                        print (f"Incrementally starting {actual_bots_to_start} stopped bots without positions...")
-                                        burst_pairs_to_start = stopped_bots_without_positions[:actual_bots_to_start] # Assume list is sorted
-                                        for bot_to_start in burst_pairs_to_start:
-                                            print(f"Starting {bot_to_start} bot pairs...")
-                                            start_bot_pair(bots, account_id, bot_to_start, args.dry)
+                                        if margin_ratio < args.start_at:
+                                            print(f"{YELLOW}Hight margin_ratio, not starting any bots...{ENDC}")
+                                        else:
+                                            print (f"Incrementally starting {actual_bots_to_start} stopped bots without positions...")
+                                            burst_pairs_to_start = stopped_bots_without_positions[:actual_bots_to_start] # Assume list is sorted
+                                            for bot_to_start in burst_pairs_to_start:
+                                                print(f"Starting {bot_to_start} bot pairs...")
+                                                start_bot_pair(bots, account_id, bot_to_start, args.dry)
                         #else:
                         #    print("No stopped bots to start...")
-                    else:
-                        print(f"{YELLOW}Hight margin_ratio, not starting any bots...{ENDC}")
+                    #else:
+                    #    print(f"{YELLOW}Hight margin_ratio, not starting any bots...{ENDC}")
 
             elif bots_pairs_to_start < 0: # running too much positions
                 if args.no_start:
