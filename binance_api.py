@@ -24,6 +24,7 @@ class Binance():
             #'futuresSymbolPriceTicker': {'url': 'fapi/v1/ticker/price', 'method': 'GET', 'private': True, 'futures': True},
             #'futuresOrderInfo': {'url': 'fapi/v1/order', 'method': 'GET', 'private': True, 'futures': True},
             #'futuresCancelOrder':      {'url': 'fapi/v1/order', 'method': 'DELETE', 'private': True, 'futures': True}
+            'time': {'url': '/fapi/v1/time', 'method': 'GET', 'private': True, 'futures': True},
     }
     
     def __init__(self, API_KEY, API_SECRET):
@@ -37,11 +38,19 @@ class Binance():
             return self.call_api(**kwargs)
         return wrapper
 
-    def set_shift_seconds(self, seconds):
-        self.shift_seconds = seconds
+    def set_shift_seconds(self):#, seconds):
+        response = requests.request('GET', 
+            url='https://fapi.binance.com//fapi/v1/time')
+        serverTime = response.json()['serverTime']
+        sysTime = int(time.time()*1000)
+        timeShift = serverTime - sysTime
+        return timeShift
+        #self.shift_seconds = seconds
         
     def call_api(self, **kwargs):
 
+        self.shift_seconds = self.set_shift_seconds()
+        
         command = kwargs.pop('command')
         api_url = 'https://fapi.binance.com/' + self.methods[command]['url']
         #api_url = 'https://testnet.binancefuture.com:443/' + self.methods[command]['url']
@@ -64,7 +73,11 @@ class Binance():
 
         if self.methods[command]['method'] == 'GET':
             api_url += '?' + payload_str
-        response = requests.request(method=self.methods[command]['method'], url=api_url, data="" if self.methods[command]['method'] == 'GET' else payload_str, headers=headers)
+
+        response = requests.request(method=self.methods[command]['method'], 
+            url=api_url, 
+            data="" if self.methods[command]['method'] == 'GET' else payload_str, 
+            headers=headers)
         if 'code' in response.text:
             print(response.text)
         return response.json()
