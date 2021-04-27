@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 
-from binance_api import Binance
+#from binance_api import Binance
+from python_binance.binance.client import Client
 from tcommas_api import API3Commas
 from utils import *
 from pprint import pprint
@@ -84,6 +85,8 @@ Notes:-
 
 ToDo:-
 
+- Check BTC max price in past hour and increase/reduce bots based on that...
+
 - Consider converting it into a webservice...
 
 - allow to select fields to show in deals/positions, use current as default
@@ -131,6 +134,10 @@ parser.add_argument("--show_positions", help='Show current open positions', acti
 parser.add_argument("--show_bots", help='Show bots details', action='store_true', default=None)
 parser.add_argument("--show_deals", help='Show deals details', action='store_true', default=None)
 parser.add_argument("--pair_allowance", help='How much money each pair is allowed, default is $500.00 (agg is $250)', type=float, default=500.0)
+
+parser.add_argument("--do_transfer", help='Transfer runds out from Futures to spot when limit reached.  API key will need Futures permissions', action='store_true', default=None)
+parser.add_argument("--transfer_at", help='Transfer when balance is over ammount (default: $5000)', type=float, default=5000.0)
+parser.add_argument("--transfer_delta", help='Wait for balance delta before transfering (default: $50)', type=float, default=50.0)
 
 parser.add_argument("--beep", help='Beep when issues detected', action='store_true', default=None)
 parser.add_argument("--colors", help='Add colors if system supports it', action='store_true', default=None)
@@ -184,7 +191,21 @@ except Exception:
 @timeout(100)
 def run_account(account_id, api_key, api_secret):
 
-    account=getBinanceAPI(api_key, api_secret).futuresAccount()
+    BinanceClient = Client(api_key, api_secret)
+    account = BinanceClient.futures_account()
+    #account=getBinanceAPI(api_key, api_secret).futuresAccount()
+
+    totalMarginBalance = get_totalMarginBalance(account)
+    if args.do_transfer:
+        if totalMarginBalance > args.transfer_at + args.transfer_delta:
+            transfer_amount = totalMarginBalance - args.transfer_at
+            print(f"Detected balance of ${totalMarginBalance:.2f} over transfer limit ${args.transfer_at}.  Transfering ${transfer_amount:.2f} to spot.")
+            if not args.dry:
+                res = BinanceClient.futures_account_transfer(asset = 'USDT', amount = transfer_amount, type = 2)
+                print(res)
+                account = BinanceClient.futures_account()
+                totalMarginBalance = get_totalMarginBalance(account)
+
 
     margin_ratio = get_margin_ratio(account)
 
@@ -243,7 +264,7 @@ def run_account(account_id, api_key, api_secret):
 
     if args.auto:
         top_stopped_pairs = get_top_stopped_pairs(bots, account_id)
-        totalMarginBalance = get_totalMarginBalance(account)
+        #totalMarginBalance = get_totalMarginBalance(account)
         totalMaintMargin = get_totalMaintMargin(account)
         max_bot_pairs = get_max_bot_pairs(totalMarginBalance, args.pair_allowance)
         active_positions_count = get_active_positions_count(account['positions'], bots)
@@ -431,3 +452,18 @@ else:
     sys.stdout.flush()
 
 
+
+
+'''
+
+
+if args.do_transfer:
+    if balance >= args.transfer_at + args.transfer_delta:
+        transfer amount = balance - args.transfer_at
+
+BinanceClient = Client(Binance_API_KEY, Binance_API_SECRET)
+
+res = BinanceClient.futures_account_transfer(asset = 'USDT', amount = 0.99, type = 2)
+
+
+'''

@@ -1,4 +1,5 @@
-from binance_api import Binance
+#from binance_api import Binance
+from python_binance.binance.client import Client
 from tcommas_api import API3Commas
 from pprint import pprint
 import sys
