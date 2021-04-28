@@ -196,10 +196,11 @@ def run_account(account_id, api_key, api_secret):
     #account=getBinanceAPI(api_key, api_secret).futuresAccount()
 
     totalMarginBalance = get_totalMarginBalance(account)
-    if args.do_transfer:
-        if totalMarginBalance > args.transfer_at + args.transfer_delta:
-            transfer_amount = totalMarginBalance - args.transfer_at
-            print(f"Detected balance of ${totalMarginBalance:.2f} over transfer limit ${args.transfer_at}.  Transfering ${transfer_amount:.2f} to spot.")
+    availableBalanceUSDT = get_availableBalance(account, 'USDT')
+    if args.do_transfer: ##ToDo: should we also check MR?
+        if availableBalanceUSDT > args.transfer_at + args.transfer_delta:
+            transfer_amount = availableBalanceUSDT - args.transfer_at
+            print(f"Detected balance of ${availableBalanceUSDT:.2f} over transfer limit ${args.transfer_at}.  Transfering ${transfer_amount:.2f} to spot.")
             if not args.dry:
                 res = BinanceClient.futures_account_transfer(asset = 'USDT', amount = transfer_amount, type = 2)
                 print(res)

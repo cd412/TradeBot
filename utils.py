@@ -97,6 +97,15 @@ def get_margin_ratio(a_data):
     return float(a_data['totalMaintMargin']) / float(a_data['totalMarginBalance']) * 100
 
 
+
+def get_availableBalance(a_data, asset = 'USDT'):
+    balance = 0.0
+    for asset in a_data['assets']:
+        if asset['asset'] == 'USDT':
+            balance = float(asset['availableBalance'])
+    return balance
+
+
 def get_totalMarginBalance(a_data):
     return float(a_data['totalMarginBalance'])
 
