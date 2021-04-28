@@ -284,7 +284,7 @@ def run_account(account_id, api_key, api_secret):
         print(f"Positions delta ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - running ({active_positions_count})")
         #print(f"Positions delta ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - MR factor ({position_delta_factor}) - running ({active_positions_count})")
         max_bots_running = bots_pairs_to_start * args.bots_per_position_ratio #dynamic_bots_per_position_ratio
-        start_up_to_bots = max_bots_running - active_bot_pair_count
+        start_up_to_bots = max_bots_running - active_bot_pair_count + active_positions_count
         if args.debug: print (f"start_up_to_bots = {start_up_to_bots}")
         start_up_to_bots = 0 if start_up_to_bots <= 0  else start_up_to_bots
         
@@ -352,7 +352,14 @@ def run_account(account_id, api_key, api_secret):
                                         stopped_bots_without_positions = get_stopped_bots_without_positions_random(bots, account_id, account['positions'])
                                     else:
                                         stopped_bots_without_positions = get_stopped_bots_without_positions(bots, account_id, account['positions'])
-                                    
+                                    if args.debug:
+                                        print("Pick min from:")
+                                        print(f"max_bots_running = {max_bots_running}")
+                                        print(f"args.bot_start_bursts = {args.bot_start_bursts}")
+                                        print(f"len(stopped_bots_without_positions) = {len(stopped_bots_without_positions)}")
+                                        print(f"max_bots_running = {max_bots_running}")
+                                        print(f"start_up_to_bots = {start_up_to_bots}")
+                                        #print(f" = {}")
                                     actual_bots_to_start = min(max_bots_running, 
                                                             args.bot_start_bursts, 
                                                             len(stopped_bots_without_positions), 
