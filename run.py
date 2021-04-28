@@ -240,6 +240,10 @@ def run_account(account_id, api_key, api_secret):
     if args.show_deals or args.show_positions or args.show_all:
         try:
             deals=get3CommasAPI().getDeals(OPTIONS=f"?account_id={account_id}&scope=active&limit=100")
+            if args.debug:
+                pprint(deals)
+                print("------------------------------------------------------------------------------")
+                pprint(account['positions'])
             show_deals_positions_txt, zeroSO = show_deals_positions(deals, account['positions'], args.colors)
             #print(show_deals_positions(deals, account['positions'], args.colors))
             print(show_deals_positions_txt)
@@ -254,6 +258,7 @@ def run_account(account_id, api_key, api_secret):
             print(e)
             pass
         #print("--------------------")
+        #show_deals_positions_txt, zeroSO = show_deals_positions(deals, account['positions'], args.colors)
 
     color = YELLOW+BLINK
     if margin_ratio >= args.stop_at:

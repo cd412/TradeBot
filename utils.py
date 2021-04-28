@@ -527,10 +527,13 @@ def show_deals_positions(deals, positions, zeroSO = [], colors = True, unicode =
             if ad['completed_safety_orders_count'] == 0:
                 a_flag = f'\n    {GREEN}***Closing/Opening***{ENDC}'
             else:
+                a_flag = f'\n    {YELLOW}***SO***{ENDC}'
+                '''
                 if ad_pair in zeroSO:
                     a_flag = f'\n    {RED}***SO***{ENDC}'
                 else:
                     a_flag = f'\n    {YELLOW}***SO***{ENDC}'
+                '''
 
         actual_usd_profit = xfloat(ad['actual_usd_profit'])
         reserved_cost, max_reserved_cost = get_deal_cost_reserved(ad)
