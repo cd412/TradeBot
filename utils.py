@@ -412,8 +412,9 @@ def show_deals(deals):
 
 
 #@timing
-def show_deals_positions(deals, positions, colors = True, unicode = True):
+def show_deals_positions(deals, positions, zeroSO = [], colors = True, unicode = True):
 
+    newZeroSO = []
     if colors:
         ENDC   = '\033[0m'
         RED    = '\033[91m'
@@ -476,7 +477,7 @@ def show_deals_positions(deals, positions, colors = True, unicode = True):
         #    txt += f"{ad}\n"
         #pprint(ad)
     
-    
+        ad_pair = ad['pair'].replace('USDT_','')
         updated_at_ts = datetime.strptime(ad['updated_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
         updated_at_ts_diff = ts - updated_at_ts
         created_at_ts = datetime.strptime(ad['created_at'], '%Y-%m-%dT%H:%M:%S.%fZ')
@@ -503,12 +504,16 @@ def show_deals_positions(deals, positions, colors = True, unicode = True):
                 position_txt = f"{RED}NoPosition Found{ENDC}"
         a_flag = ''
         if ad['current_active_safety_orders_count'] == 0:
+            newZeroSO.append(ad_pair)
             a_flag = f'\n    {RED}***Zero Active***{ENDC}'
             #if ad['completed_safety_orders_count'] != ad['max_safety_orders']:
             if ad['completed_safety_orders_count'] == 0:
                 a_flag = f'\n    {GREEN}***Closing/Opening***{ENDC}'
             else:
-                a_flag = f'\n    {YELLOW}***SO***{ENDC}'
+                if ad_pair in zeroSO:
+                    a_flag = f'\n    {RED}***SO***{ENDC}'
+                else:
+                    a_flag = f'\n    {YELLOW}***SO***{ENDC}'
 
         actual_usd_profit = xfloat(ad['actual_usd_profit'])
         reserved_cost, max_reserved_cost = get_deal_cost_reserved(ad)
@@ -638,7 +643,7 @@ ICX     -1.02% 58    2.2131     c3 a0 m11 $ 128.41 $   0.00 $  2.19 $  2.22     
     deal_position_list.append(deal_position.copy())
     #pprint(deal_position_list)
     txt += f"{'':41} ${total_bought_volume:7.2f} ${total_deals_cost_reserved:7.2f}"
-    return txt
+    return txt, newZeroSO
 
 #----------------------------------
 #----------------------------------

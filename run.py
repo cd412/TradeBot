@@ -197,6 +197,9 @@ def run_account(account_id, api_key, api_secret):
 
     totalMarginBalance = get_totalMarginBalance(account)
     availableBalanceUSDT = get_availableBalance(account, 'USDT')
+    if args.debug:
+        print(f"totalMarginBalance = {totalMarginBalance}")
+        print(f"availableBalanceUSDT = {availableBalanceUSDT}")
     if args.do_transfer: ##ToDo: should we also check MR?
         if availableBalanceUSDT > args.transfer_at + args.transfer_delta:
             transfer_amount = availableBalanceUSDT - args.transfer_at
@@ -237,7 +240,7 @@ def run_account(account_id, api_key, api_secret):
     if args.show_deals or args.show_positions or args.show_all:
         try:
             deals=get3CommasAPI().getDeals(OPTIONS=f"?account_id={account_id}&scope=active&limit=100")
-            show_deals_positions_txt = show_deals_positions(deals, account['positions'], args.colors)
+            show_deals_positions_txt, zeroSO = show_deals_positions(deals, account['positions'], args.colors)
             #print(show_deals_positions(deals, account['positions'], args.colors))
             print(show_deals_positions_txt)
             if "Error" in show_deals_positions_txt:
@@ -280,6 +283,10 @@ def run_account(account_id, api_key, api_secret):
         #bots_pairs_to_start = round(max_bot_pairs - position_delta_factor - active_positions_count)
         print(f"Positions delta ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - running ({active_positions_count})")
         #print(f"Positions delta ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - MR factor ({position_delta_factor}) - running ({active_positions_count})")
+        max_bots_running = bots_pairs_to_start * args.bots_per_position_ratio #dynamic_bots_per_position_ratio
+        start_up_to_bots = max_bots_running - active_bot_pair_count
+        if args.debug: print (f"start_up_to_bots = {start_up_to_bots}")
+        start_up_to_bots = 0 if start_up_to_bots <= 0  else start_up_to_bots
         
         started_bots_without_positions = get_started_bots_without_positions(bots, account_id, account['positions'])
         count_of_started_bots_without_positions = len(started_bots_without_positions)
@@ -310,7 +317,7 @@ def run_account(account_id, api_key, api_secret):
                             else: # no stopped bots with positions to start, start from ones without active positions
                                 #dynamic_bots_per_position_ratio = round((bots_pairs_to_start/max_bot_pairs) * args.bots_per_position_ratio) + 1
                                 #print(f"dynamic_bots_per_position_ratio = {dynamic_bots_per_position_ratio}")
-                                max_bots_running = bots_pairs_to_start * args.bots_per_position_ratio #dynamic_bots_per_position_ratio
+                                #max_bots_running = bots_pairs_to_start * args.bots_per_position_ratio #dynamic_bots_per_position_ratio
                                 if args.verbose:
                                     print (f"Need to have a max of {max_bots_running} stopped bot pairs...")
 
@@ -345,7 +352,12 @@ def run_account(account_id, api_key, api_secret):
                                         stopped_bots_without_positions = get_stopped_bots_without_positions_random(bots, account_id, account['positions'])
                                     else:
                                         stopped_bots_without_positions = get_stopped_bots_without_positions(bots, account_id, account['positions'])
-                                    actual_bots_to_start = min(max_bots_running, args.bot_start_bursts, len(stopped_bots_without_positions), max_bots_running)
+                                    
+                                    actual_bots_to_start = min(max_bots_running, 
+                                                            args.bot_start_bursts, 
+                                                            len(stopped_bots_without_positions), 
+                                                            max_bots_running, 
+                                                            start_up_to_bots)
                                     actual_bots_to_start = 0 if actual_bots_to_start <= 0 else actual_bots_to_start # Make sure it's not a negative number
 
                                     if not args.no_start:
@@ -429,7 +441,7 @@ if args.keep_running:
             sys.stdout.flush()
         except Exception as e:
             print(e)
-            keep_running_timer = int(args.keep_running_timer/10)
+            keep_running_timer = int(args.keep_running_timer/10) + 10
             pass
 
         #ts_txt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -454,17 +466,3 @@ else:
 
 
 
-
-'''
-
-
-if args.do_transfer:
-    if balance >= args.transfer_at + args.transfer_delta:
-        transfer amount = balance - args.transfer_at
-
-BinanceClient = Client(Binance_API_KEY, Binance_API_SECRET)
-
-res = BinanceClient.futures_account_transfer(asset = 'USDT', amount = 0.99, type = 2)
-
-
-'''
