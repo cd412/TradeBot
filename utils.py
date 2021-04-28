@@ -102,7 +102,7 @@ def get_availableBalance(a_data, asset = 'USDT'):
     balance = 0.0
     for asset in a_data['assets']:
         if asset['asset'] == 'USDT':
-            balance = float(asset['availableBalance'])
+            balance = float(asset['walletBalance']) #???
     return balance
 
 
