@@ -193,12 +193,14 @@ def run_account(account_id, api_key, api_secret):
 
     BinanceClient = Client(api_key, api_secret)
     account = BinanceClient.futures_account()
+    usdt_spot_total_balance = get_spot_balance(BinanceClient)
 
     totalMarginBalance = get_totalMarginBalance(account)
     availableBalanceUSDT = get_availableBalance(account, 'USDT')
     if args.debug:
         print(f"totalMarginBalance = {totalMarginBalance}")
         print(f"availableBalanceUSDT = {availableBalanceUSDT}")
+        print(f"usdt_spot_total_balance = {usdt_spot_total_balance}")
 
 
     # Tansfer funds from Futures to Spot

@@ -74,6 +74,15 @@ def beep(btime):
         time.sleep(0.5)
 
 
+def get_spot_balance(Client, coin = 'USDT'):
+    coins = Client.get_all_coins_info()
+    usdt_spot_total = 0.0
+    for a_coin in coins:
+        if a_coin['coin'] == coin:
+            usdt_spot_total = xfloat(a_coin['free']) + xfloat(a_coin['locked'])
+    return usdt_spot_total
+
+
 def show_positions(positions):
     txt = f"Sym   Amt   entryPrice Margin     PNL       \n"
     for position in sorted(positions, key=lambda k: (k['symbol'])):
