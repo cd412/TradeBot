@@ -283,7 +283,14 @@ def run_account(account_id, api_key, api_secret):
         #bots_pairs_to_start = round(max_bot_pairs - position_delta_factor - active_positions_count)
         print(f"Positions delta ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - running ({active_positions_count})")
         #print(f"Positions delta ({bots_pairs_to_start}) = target ({round(max_bot_pairs)}) - MR factor ({position_delta_factor}) - running ({active_positions_count})")
-        max_bots_running = bots_pairs_to_start * args.bots_per_position_ratio #dynamic_bots_per_position_ratio
+        
+        stopped_bots_with_positions = get_stopped_bots_with_positions(bots, account_id, account['positions'])
+        started_bots_with_positions = get_started_bots_with_positions(bots, account_id, account['positions'])
+        
+        
+        max_bots_running = (bots_pairs_to_start * args.bots_per_position_ratio) + len(started_bots_with_positions) #dynamic_bots_per_position_ratio
+        
+        
         start_up_to_bots = max_bots_running - active_bot_pair_count + active_positions_count
         if args.debug: print (f"start_up_to_bots = {start_up_to_bots}")
         start_up_to_bots = 0 if start_up_to_bots <= 0  else start_up_to_bots
@@ -304,7 +311,7 @@ def run_account(account_id, api_key, api_secret):
                 #if not args.no_start:
                     #if margin_ratio < args.start_at:
                         #if len(top_stopped_pairs) > 0:
-                            stopped_bots_with_positions = get_stopped_bots_with_positions(bots, account_id, account['positions'])
+                            #stopped_bots_with_positions = get_stopped_bots_with_positions(bots, account_id, account['positions'])
                             if len(stopped_bots_with_positions) > 0:
                                 print(f"Starting {len(stopped_bots_with_positions)} stopped bots with active positions...")
                                 if margin_ratio < args.start_at:

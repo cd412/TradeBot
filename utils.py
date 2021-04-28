@@ -335,6 +335,23 @@ def get_started_bots_without_positions(bots, account_id, positions):
     return bot_l
 
 
+
+# get a list of started bots with active positions
+def get_started_bots_with_positions(bots, account_id, positions):
+    positions_l = []
+    for position in sorted(positions, key=lambda k: (k['symbol'])):
+        if float(position['positionAmt']) != 0.0:
+            positions_l.append(position['symbol'].replace('USDT',''))
+
+    bot_l = []
+    for bot in bots:
+        if account_id == bot['account_id'] and bot['strategy'] == "long" and bot['is_enabled'] and 'do not start' not in bot['name']:
+            if ''.join(bot['pairs']).replace('USDT_','') in positions_l:
+                bot_l.append(''.join(bot['pairs']).replace('USDT_',''))
+    return bot_l
+
+
+
 # return FIRST matching accountID
 #@timing
 def getAccountID(binance_account_flag):
