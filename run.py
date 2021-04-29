@@ -145,6 +145,7 @@ parser.add_argument("--colors", help='Add colors if system supports it', action=
 #parser.add_argument("--pairs", help="A list of pairs ordered from best down, e.g. --pairs EOS ENJ AXS", nargs='+', default=None)
 parser.add_argument("--keep_running", help='Loop forever (Ctrl+c to stop)', action='store_true', default=None)
 parser.add_argument("--keep_running_timer", help='Time to sleep between runs in seconds (default 60)', type=int, default=60)
+parser.add_argument("--keep_running_dynamic_timer", help='Adjust timer based on state to reduce load on APIs', action='store_true', default=None)
 parser.add_argument("--no_start", help='Run in safe mode (as a backup) with different values to make sure to stop (and not start) bots', action='store_true', default=None)
 parser.add_argument("--debug", help='debug', action='store_true', default=None)
 parser.add_argument("--verbose", help='Verbose output', action='store_true', default=None)
@@ -157,7 +158,8 @@ if args.start_at >= args.stop_at:
 
 #----------------------------------
 
-beep_time = 2
+beep_time = 10
+
 if args.colors:
     ENDC   = '\033[0m'
     RED    = '\033[91m'
@@ -190,6 +192,8 @@ except Exception:
 #----------------------------------
 @timeout(100)
 def run_account(account_id, api_key, api_secret):
+
+    ret = {}
 
     BinanceClient = Client(api_key, api_secret)
     account = BinanceClient.futures_account()
@@ -431,7 +435,8 @@ def run_account(account_id, api_key, api_secret):
             print(e)
             traceback.print_exc()
             pass
-
+    ret['margin_ratio'] = margin_ratio
+    return ret
 
 
 #----------------------------------
@@ -475,7 +480,9 @@ if args.keep_running:
         print (account_txt)
         print ("-----------------------------------------------------------------")
         try:
-            run_account(account, Binance_API_KEY, Binance_API_SECRET)
+            ret = run_account(account, Binance_API_KEY, Binance_API_SECRET)
+            if ret['margin_ratio'] > args.stop_at and args.keep_running_dynamic_timer:
+                keep_running_timer *= 3
             sys.stdout.flush()
         except Exception as e:
             print(e)
