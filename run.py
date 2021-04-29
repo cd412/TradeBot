@@ -465,6 +465,9 @@ if not found_account:
 
 
 account, account_txt = getAccountID(account_name)
+if account == "" or account_txt == "":
+    print("Error: Need to find account before proceeding...")
+    exit(1)
 
 if args.keep_running:
     while True:

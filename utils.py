@@ -365,10 +365,24 @@ def get_started_bots_with_positions(bots, account_id, positions):
 #@timing
 def getAccountID(binance_account_flag):
     accounts=get3CommasAPI().getAccounts()
+    if type(accounts) != type([]):
+        print("ERROR: Expected to get a list from 3Commas, got:")
+        pprint(accounts)
+    found = False
+    account_id = ""
+    account_txt = ""
+    accounts_found = ""
     for account in accounts:
+        accounts_found += f"{account['exchange_name']}\t:\t{account['name']}\n"
         if account['exchange_name'] == "Binance Futures USDT-M" and binance_account_flag in account['name']:
             txt = f"Using {account['name']} from exchange {account['exchange_name']}"
-            return account['id'], txt
+            account_id = account['id']
+            account_txt = txt
+            found = True
+    if not found:
+        print(f"ERROR: Expected to find {binance_account_flag} in 3Commas account names:")
+        print(accounts_found)
+    return account_id, account_txt
 
 
 
